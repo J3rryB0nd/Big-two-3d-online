@@ -8,471 +8,2666 @@
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 
 <style>
-:root{
-  --gold:#ffd86b;
-  --green:#075b3f;
-  --card-w:70px;
-  --card-h:102px
-}
-*{box-sizing:border-box}
-body{
-  margin:0;overflow:hidden;color:#fff;user-select:none;
-  font-family:"Microsoft JhengHei","Noto Sans TC",Arial,sans-serif;
-  background:radial-gradient(circle,#17463b,#020b08 80%)
-}
-button,input{font:inherit}
-button{cursor:pointer}
-button:disabled{opacity:.38;cursor:not-allowed}
-.hidden{display:none!important}
-
-/* MENU */
-#menu{
-  position:fixed;z-index:5000;inset:0;display:flex;align-items:center;
-  justify-content:center;padding:20px;
-  background:radial-gradient(circle at 50% 25%,#176b50,#03130e 65%)
-}
-.menu-card{
-  width:min(480px,96vw);padding:28px;border:1px solid #d7b85e;
-  border-radius:24px;background:linear-gradient(145deg,#124637,#051b14);
-  box-shadow:0 30px 80px #000
-}
-.menu-card h1{
-  margin:0;text-align:center;color:var(--gold);font-size:44px;
-  letter-spacing:5px;text-shadow:0 4px #704500
-}
-.subtitle{text-align:center;color:#bdd8ce;line-height:1.5;margin:10px 0 24px}
-label{display:block;margin:12px 0 6px;color:#b7d8cb;font-size:13px}
-input{
-  width:100%;padding:13px;color:#fff;border:1px solid #ffffff38;
-  border-radius:10px;outline:0;background:#0006
-}
-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px #ffd86b22}
-#codeInput{text-align:center;text-transform:uppercase;font-weight:900;letter-spacing:5px}
-.menu-btn{
-  width:100%;margin-top:13px;padding:13px;border:1px solid #ffffff44;
-  border-radius:11px;color:#fff;font-weight:900;background:linear-gradient(#298166,#104936);
-  box-shadow:0 5px #052a20
-}
-.menu-btn.gold{
-  color:#241800;border-color:#ffeaa0;
-  background:linear-gradient(#ffe887,#d79b24);box-shadow:0 5px #755006
-}
-.menu-btn:hover:not(:disabled){filter:brightness(1.14);transform:translateY(-1px)}
-.divider{display:flex;align-items:center;gap:12px;margin:22px 0;color:#8ca99e}
-.divider:before,.divider:after{content:"";height:1px;flex:1;background:#ffffff22}
-.room-box{
-  display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;
-  margin-top:15px;padding:13px;border:1px solid #ffd86b66;border-radius:12px;background:#0004
-}
-.room-box strong{color:var(--gold);font-size:25px;letter-spacing:4px}
-.room-box button{
-  padding:7px;color:#fff;border:1px solid #ffffff44;border-radius:7px;background:#27614d
-}
-#seats{display:grid;gap:8px;margin-top:14px}
-.seat{
-  display:flex;justify-content:space-between;gap:8px;padding:11px;
-  border:1px solid #ffffff20;border-radius:10px;background:#0004
-}
-.seat.ready{border-color:#63ffa566}
-.seat small{color:#9cb8ad}
-.seat.ready small{color:#76ffae}
-#menuMessage{text-align:center;min-height:22px;margin-top:14px;color:#bcd6cc}
-#menuMessage.error{color:#ff9aa5}
-#menuMessage.good{color:#88ffb8}
-
-/* GAME */
-#game{
-  position:relative;width:100vw;height:100vh;min-height:620px;
-  perspective:1300px;overflow:hidden
-}
-.top{
-  position:absolute;z-index:100;top:12px;left:18px;right:18px;
-  display:flex;align-items:center;justify-content:space-between;pointer-events:none
-}
-.logo{font-size:36px;font-weight:900;color:var(--gold);text-shadow:0 4px #744900}
-.info{
-  padding:8px 12px;border:1px solid #ffffff33;border-radius:10px;
-  background:#0008;font-size:13px;text-align:right
-}
-#message{
-  position:absolute;z-index:150;top:70px;left:50%;max-width:80vw;
-  transform:translateX(-50%);padding:9px 16px;text-align:center;
-  border:1px solid #ffffff33;border-radius:11px;background:#000b
-}
-#message.good{color:#9effbe}
-#message.bad{color:#ff9ca7}
-#message.notice{color:#ffe58c}
-
-.table-wrap{
-  position:absolute;inset:90px 5vw 185px;display:flex;align-items:center;justify-content:center
-}
-.table{
-  position:relative;width:min(950px,82vw);height:min(570px,66vh);min-height:390px;
-  border:17px solid #4a2915;border-radius:48%;transform:rotateX(8deg);
-  transform-style:preserve-3d;
-  background:radial-gradient(ellipse,#148361,#075039 58%,#032d21);
-  box-shadow:inset 0 0 0 5px #a5763d,inset 0 0 35px #0009,0 20px #28160b,0 30px 45px #000b
-}
-.table:after{
-  content:"鋤 大 D";position:absolute;inset:0;display:grid;place-items:center;
-  color:#ffffff0c;font-size:85px;font-weight:900;letter-spacing:15px;pointer-events:none
-}
-.player{
-  position:absolute;z-index:30;text-align:center;transform-style:preserve-3d
-}
-.player.bottom{bottom:-62px;left:50%;transform:translateX(-50%)}
-.player.top{top:-56px;left:50%;transform:translateX(-50%)}
-.player.left{left:-72px;top:48%;transform:translateY(-50%)}
-.player.right{right:-72px;top:48%;transform:translateY(-50%)}
-.panel{
-  min-width:140px;padding:8px;border:1px solid #ffffff33;border-radius:13px;
-  background:#000b;box-shadow:0 7px 15px #0008
-}
-.player.active .panel{border-color:var(--gold);box-shadow:0 0 22px #ffd86b99}
-.player.winner .panel{border-color:#5aff9e;box-shadow:0 0 22px #5aff9e99}
-.avatar{
-  width:42px;height:42px;margin:auto auto 4px;display:grid;place-items:center;
-  border:2px solid #9ee0ca;border-radius:50%;background:#174d3e;font-size:23px
-}
-.pname{color:var(--gold);font-weight:900}
-.pmeta{font-size:11px;color:#d4e5de;margin-top:3px}
-.minihand{height:30px;display:flex;justify-content:center}
-.minicard{
-  width:21px;height:31px;margin-left:-12px;border:1px solid #fff;border-radius:3px;
-  background:repeating-linear-gradient(45deg,#173984 0 4px,#386ccc 4px 8px)
-}
-.minicard:first-child{margin-left:0}
-
-.center{
-  position:absolute;z-index:40;left:50%;top:50%;width:75%;min-height:160px;
-  transform:translate(-50%,-50%) translateZ(25px);text-align:center
-}
-#trickLabel{height:25px;color:#fff1b7;font-weight:800}
-#tableCards{display:flex;justify-content:center;align-items:center;min-height:110px}
-.card{
-  position:relative;flex:0 0 var(--card-w);width:var(--card-w);height:var(--card-h);
-  color:#111;border:1px solid #bbb;border-radius:8px;
-  background:linear-gradient(145deg,#fff,#e7e6e0);
-  box-shadow:inset 0 0 0 2px #fff,0 6px 10px #0008
-}
-.card.red{color:#d0182c}
-.corner{position:absolute;top:5px;left:6px;font-size:16px;font-weight:900;line-height:15px}
-.corner.bottom{top:auto;left:auto;right:6px;bottom:5px;transform:rotate(180deg)}
-.big{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:38px}
-.table-card{margin-left:-15px;animation:deal .25s ease-out}
-.table-card:first-child{margin-left:0}
-
-#hand{
-  position:absolute;z-index:90;left:50%;bottom:72px;width:min(98vw,1100px);
-  height:130px;display:flex;align-items:flex-end;justify-content:center;
-  transform:translateX(-50%);perspective:900px
-}
-.hand-card{margin-left:clamp(-42px,-2.6vw,-23px);cursor:pointer;transition:.16s}
-.hand-card:first-child{margin-left:0}
-.hand-card:hover{z-index:100!important;transform:translateY(-14px)}
-.hand-card.selected{transform:translateY(-28px);box-shadow:0 0 0 3px var(--gold),0 14px 20px #0009}
-.hand-card.selected:hover{transform:translateY(-31px)}
-
-.controls{
-  position:absolute;z-index:160;left:12px;right:12px;bottom:14px;
-  display:flex;justify-content:center;align-items:center;gap:9px
-}
-.action{
-  min-width:85px;padding:10px 14px;color:#fff;font-weight:900;
-  border:1px solid #ffffff44;border-radius:10px;background:linear-gradient(#277b61,#104735);
-  box-shadow:0 5px #05271e
-}
-.action.gold{color:#241800;background:linear-gradient(#ffe780,#d89d26);box-shadow:0 5px #765006}
-.action.red{background:linear-gradient(#ad3947,#681623);box-shadow:0 5px #350812}
-#timer{
-  width:68px;padding:9px;text-align:center;font-size:21px;font-weight:900;
-  border:2px solid #80f2c7;border-radius:10px;background:#000a
-}
-#timer.warn{color:#ffda58;border-color:#ffda58}
-#timer.danger{color:#ff6877;border-color:#ff6877}
-#penalty{
-  position:absolute;z-index:130;bottom:210px;left:14px;max-width:270px;
-  padding:8px;color:#ffb2ba;font-size:12px;border:1px solid #ff758855;
-  border-radius:8px;background:#430711cc
-}
-#rulesButton{
-  position:absolute;z-index:200;right:16px;top:70px;width:41px;height:41px;
-  color:#fff;font-size:20px;border:1px solid #ffffff44;border-radius:50%;background:#0008
+:root {
+    --gold: #ffd86b;
+    --green: #075b3f;
+    --card-width: 70px;
+    --card-height: 102px;
 }
 
-/* MODAL */
-.modal{
-  position:fixed;z-index:6000;inset:0;display:none;align-items:center;justify-content:center;
-  padding:20px;background:#000d
+* {
+    box-sizing: border-box;
 }
-.modal.open{display:flex}
-.modal-content{
-  width:min(800px,96vw);max-height:88vh;overflow:auto;padding:23px;
-  border:1px solid #d2b25a;border-radius:17px;background:#09271e
-}
-.modal-content h2,.modal-content h3{color:var(--gold)}
-.modal-content li{margin:7px 0;line-height:1.5}
-.close{float:right;padding:8px 13px;color:#fff;border:1px solid #777;border-radius:7px;background:#333}
 
-@keyframes deal{
-  from{opacity:0;transform:translateY(-55px) rotate(12deg)}
-  to{opacity:1;transform:none}
+body {
+    margin: 0;
+    overflow: hidden;
+    color: white;
+    font-family:
+        "Microsoft JhengHei",
+        "Noto Sans TC",
+        Arial,
+        sans-serif;
+    background:
+        radial-gradient(circle at 50% 45%, #17463b, #020b08 80%);
+    user-select: none;
 }
-@media(max-width:760px){
-  :root{--card-w:56px;--card-h:82px}
-  .table-wrap{inset:105px 1vw 190px}
-  .table{width:88vw;height:54vh;min-height:350px}
-  .player.left{left:-42px}.player.right{right:-42px}
-  .panel{min-width:103px;padding:5px;font-size:12px}
-  .avatar{width:34px;height:34px;font-size:18px}
-  .info{display:none}.logo{font-size:27px}
-  .action{min-width:63px;padding:8px;font-size:12px}
-  .controls{flex-wrap:wrap}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =========================================================
+   Main menu
+========================================================= */
+
+#menu {
+    position: fixed;
+    z-index: 5000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background:
+        radial-gradient(
+            circle at 50% 25%,
+            #176b50,
+            #03130e 65%
+        );
+}
+
+.menu-card {
+    width: min(480px, 96vw);
+    padding: 28px;
+    border: 1px solid #d7b85e;
+    border-radius: 24px;
+    background:
+        linear-gradient(145deg, #124637, #051b14);
+    box-shadow: 0 30px 80px #000;
+}
+
+.menu-card h1 {
+    margin: 0;
+    color: var(--gold);
+    font-size: 44px;
+    text-align: center;
+    letter-spacing: 5px;
+    text-shadow: 0 4px #704500;
+}
+
+.subtitle {
+    margin: 10px 0 24px;
+    color: #bdd8ce;
+    text-align: center;
+    line-height: 1.5;
+}
+
+label {
+    display: block;
+    margin: 12px 0 6px;
+    color: #b7d8cb;
+    font-size: 13px;
+}
+
+input {
+    width: 100%;
+    padding: 13px;
+    color: white;
+    border: 1px solid #ffffff38;
+    border-radius: 10px;
+    outline: none;
+    background: #0006;
+}
+
+input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px #ffd86b22;
+}
+
+#codeInput {
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: 900;
+    letter-spacing: 5px;
+}
+
+.menu-button {
+    width: 100%;
+    margin-top: 13px;
+    padding: 13px;
+    color: white;
+    font-weight: 900;
+    border: 1px solid #ffffff44;
+    border-radius: 11px;
+    background:
+        linear-gradient(#298166, #104936);
+    box-shadow: 0 5px #052a20;
+}
+
+.menu-button.gold {
+    color: #241800;
+    border-color: #ffeaa0;
+    background:
+        linear-gradient(#ffe887, #d79b24);
+    box-shadow: 0 5px #755006;
+}
+
+.menu-button:hover:not(:disabled) {
+    filter: brightness(1.14);
+    transform: translateY(-1px);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 22px 0;
+    color: #8ca99e;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #ffffff22;
+}
+
+.room-box {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+    margin-top: 15px;
+    padding: 13px;
+    border: 1px solid #ffd86b66;
+    border-radius: 12px;
+    background: #0004;
+}
+
+.room-box strong {
+    color: var(--gold);
+    font-size: 25px;
+    letter-spacing: 4px;
+}
+
+.room-box button {
+    padding: 7px;
+    color: white;
+    border: 1px solid #ffffff44;
+    border-radius: 7px;
+    background: #27614d;
+}
+
+#seats {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.seat {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 11px;
+    border: 1px solid #ffffff20;
+    border-radius: 10px;
+    background: #0004;
+}
+
+.seat.ready {
+    border-color: #63ffa566;
+}
+
+.seat small {
+    color: #9cb8ad;
+}
+
+.seat.ready small {
+    color: #76ffae;
+}
+
+#menuMessage,
+#lobbyStatus {
+    min-height: 22px;
+    margin-top: 14px;
+    color: #bcd6cc;
+    text-align: center;
+}
+
+#menuMessage.error {
+    color: #ff9aa5;
+}
+
+#menuMessage.good {
+    color: #88ffb8;
+}
+
+/* =========================================================
+   Main game
+========================================================= */
+
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    min-height: 620px;
+    overflow: hidden;
+    perspective: 1300px;
+}
+
+.top-bar {
+    position: absolute;
+    z-index: 100;
+    top: 12px;
+    right: 18px;
+    left: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.logo {
+    color: var(--gold);
+    font-size: 36px;
+    font-weight: 900;
+    text-shadow: 0 4px #744900;
+}
+
+.game-info {
+    padding: 8px 12px;
+    font-size: 13px;
+    text-align: right;
+    border: 1px solid #ffffff33;
+    border-radius: 10px;
+    background: #0008;
+}
+
+#message {
+    position: absolute;
+    z-index: 150;
+    top: 70px;
+    left: 50%;
+    max-width: 80vw;
+    padding: 9px 16px;
+    text-align: center;
+    border: 1px solid #ffffff33;
+    border-radius: 11px;
+    background: #000b;
+    transform: translateX(-50%);
+}
+
+#message.good {
+    color: #9effbe;
+}
+
+#message.bad {
+    color: #ff9ca7;
+}
+
+#message.notice {
+    color: #ffe58c;
+}
+
+/* =========================================================
+   Table
+========================================================= */
+
+.table-wrap {
+    position: absolute;
+    inset: 90px 5vw 185px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.table {
+    position: relative;
+    width: min(950px, 82vw);
+    height: min(570px, 66vh);
+    min-height: 390px;
+    border: 17px solid #4a2915;
+    border-radius: 48%;
+    background:
+        radial-gradient(
+            ellipse,
+            #148361,
+            #075039 58%,
+            #032d21
+        );
+    box-shadow:
+        inset 0 0 0 5px #a5763d,
+        inset 0 0 35px #0009,
+        0 20px #28160b,
+        0 30px 45px #000b;
+    transform: rotateX(8deg);
+    transform-style: preserve-3d;
+}
+
+.table::after {
+    content: "鋤 大 D";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #ffffff0c;
+    font-size: 85px;
+    font-weight: 900;
+    letter-spacing: 15px;
+    pointer-events: none;
+}
+
+/* =========================================================
+   Player areas
+========================================================= */
+
+.player {
+    position: absolute;
+    z-index: 30;
+    text-align: center;
+    transform-style: preserve-3d;
+}
+
+.player.bottom {
+    bottom: -62px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.player.top {
+    top: -56px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.player.left {
+    top: 48%;
+    left: -72px;
+    transform: translateY(-50%);
+}
+
+.player.right {
+    top: 48%;
+    right: -72px;
+    transform: translateY(-50%);
+}
+
+.player-panel {
+    min-width: 140px;
+    padding: 8px;
+    border: 1px solid #ffffff33;
+    border-radius: 13px;
+    background: #000b;
+    box-shadow: 0 7px 15px #0008;
+}
+
+.player.active .player-panel {
+    border-color: var(--gold);
+    box-shadow: 0 0 22px #ffd86b99;
+}
+
+.player.winner .player-panel {
+    border-color: #5aff9e;
+    box-shadow: 0 0 22px #5aff9e99;
+}
+
+.avatar {
+    width: 42px;
+    height: 42px;
+    margin: auto auto 4px;
+    display: grid;
+    place-items: center;
+    font-size: 23px;
+    border: 2px solid #9ee0ca;
+    border-radius: 50%;
+    background: #174d3e;
+}
+
+.player-name {
+    color: var(--gold);
+    font-weight: 900;
+}
+
+.player-meta {
+    margin-top: 3px;
+    color: #d4e5de;
+    font-size: 11px;
+}
+
+.mini-hand {
+    height: 30px;
+    display: flex;
+    justify-content: center;
+}
+
+.mini-card {
+    width: 21px;
+    height: 31px;
+    margin-left: -12px;
+    border: 1px solid white;
+    border-radius: 3px;
+    background:
+        repeating-linear-gradient(
+            45deg,
+            #173984 0 4px,
+            #386ccc 4px 8px
+        );
+}
+
+.mini-card:first-child {
+    margin-left: 0;
+}
+
+/* =========================================================
+   Centre play area
+========================================================= */
+
+.center-area {
+    position: absolute;
+    z-index: 40;
+    top: 50%;
+    left: 50%;
+    width: 75%;
+    min-height: 160px;
+    text-align: center;
+    transform:
+        translate(-50%, -50%)
+        translateZ(25px);
+}
+
+#trickLabel {
+    min-height: 25px;
+    color: #fff1b7;
+    font-weight: 800;
+}
+
+#tableCards {
+    min-height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================================================
+   Cards
+========================================================= */
+
+.card {
+    position: relative;
+    flex: 0 0 var(--card-width);
+    width: var(--card-width);
+    height: var(--card-height);
+    color: #111;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    background:
+        linear-gradient(145deg, #fff, #e7e6e0);
+    box-shadow:
+        inset 0 0 0 2px #fff,
+        0 6px 10px #0008;
+}
+
+.card.red {
+    color: #d0182c;
+}
+
+.card-corner {
+    position: absolute;
+    top: 5px;
+    left: 6px;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 15px;
+}
+
+.card-corner.bottom {
+    top: auto;
+    right: 6px;
+    bottom: 5px;
+    left: auto;
+    transform: rotate(180deg);
+}
+
+.card-symbol {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    font-size: 38px;
+    transform: translate(-50%, -50%);
+}
+
+.table-card {
+    margin-left: -15px;
+    animation: deal 0.25s ease-out;
+}
+
+.table-card:first-child {
+    margin-left: 0;
+}
+
+/* =========================================================
+   Local hand
+========================================================= */
+
+#hand {
+    position: absolute;
+    z-index: 90;
+    bottom: 72px;
+    left: 50%;
+    width: min(98vw, 1100px);
+    height: 130px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    perspective: 900px;
+    transform: translateX(-50%);
+}
+
+.hand-card {
+    margin-left: clamp(-42px, -2.6vw, -23px);
+    cursor: pointer;
+    transition: 0.16s;
+}
+
+.hand-card:first-child {
+    margin-left: 0;
+}
+
+.hand-card:hover {
+    z-index: 100 !important;
+    transform: translateY(-14px);
+}
+
+.hand-card.selected {
+    border-color: var(--gold);
+    box-shadow:
+        0 0 0 3px var(--gold),
+        0 14px 20px #0009;
+    transform: translateY(-28px);
+}
+
+.hand-card.selected:hover {
+    transform: translateY(-31px);
+}
+
+/* =========================================================
+   Controls
+========================================================= */
+
+.controls {
+    position: absolute;
+    z-index: 160;
+    right: 12px;
+    bottom: 14px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+}
+
+.action-button {
+    min-width: 85px;
+    padding: 10px 14px;
+    color: white;
+    font-weight: 900;
+    border: 1px solid #ffffff44;
+    border-radius: 10px;
+    background:
+        linear-gradient(#277b61, #104735);
+    box-shadow: 0 5px #05271e;
+}
+
+.action-button.gold {
+    color: #241800;
+    background:
+        linear-gradient(#ffe780, #d89d26);
+    box-shadow: 0 5px #765006;
+}
+
+.action-button.red {
+    background:
+        linear-gradient(#ad3947, #681623);
+    box-shadow: 0 5px #350812;
+}
+
+#timer {
+    width: 68px;
+    padding: 9px;
+    font-size: 21px;
+    font-weight: 900;
+    text-align: center;
+    border: 2px solid #80f2c7;
+    border-radius: 10px;
+    background: #000a;
+}
+
+#timer.warning {
+    color: #ffda58;
+    border-color: #ffda58;
+}
+
+#timer.danger {
+    color: #ff6877;
+    border-color: #ff6877;
+}
+
+#penalty {
+    position: absolute;
+    z-index: 130;
+    bottom: 210px;
+    left: 14px;
+    max-width: 270px;
+    padding: 8px;
+    color: #ffb2ba;
+    font-size: 12px;
+    border: 1px solid #ff758855;
+    border-radius: 8px;
+    background: #430711cc;
+}
+
+#rulesButton {
+    position: absolute;
+    z-index: 200;
+    top: 70px;
+    right: 16px;
+    width: 41px;
+    height: 41px;
+    color: white;
+    font-size: 20px;
+    border: 1px solid #ffffff44;
+    border-radius: 50%;
+    background: #0008;
+}
+
+/* =========================================================
+   Rules modal
+========================================================= */
+
+.modal {
+    position: fixed;
+    z-index: 6000;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: #000d;
+}
+
+.modal.open {
+    display: flex;
+}
+
+.modal-content {
+    width: min(800px, 96vw);
+    max-height: 88vh;
+    padding: 23px;
+    overflow: auto;
+    border: 1px solid #d2b25a;
+    border-radius: 17px;
+    background: #09271e;
+}
+
+.modal-content h2,
+.modal-content h3 {
+    color: var(--gold);
+}
+
+.modal-content li {
+    margin: 7px 0;
+    line-height: 1.5;
+}
+
+.close-button {
+    float: right;
+    padding: 8px 13px;
+    color: white;
+    border: 1px solid #777;
+    border-radius: 7px;
+    background: #333;
+}
+
+@keyframes deal {
+    from {
+        opacity: 0;
+        transform: translateY(-55px) rotate(12deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (max-width: 760px) {
+    :root {
+        --card-width: 56px;
+        --card-height: 82px;
+    }
+
+    .table-wrap {
+        inset: 105px 1vw 190px;
+    }
+
+    .table {
+        width: 88vw;
+        height: 54vh;
+        min-height: 350px;
+    }
+
+    .player.left {
+        left: -42px;
+    }
+
+    .player.right {
+        right: -42px;
+    }
+
+    .player-panel {
+        min-width: 103px;
+        padding: 5px;
+        font-size: 12px;
+    }
+
+    .avatar {
+        width: 34px;
+        height: 34px;
+        font-size: 18px;
+    }
+
+    .game-info {
+        display: none;
+    }
+
+    .logo {
+        font-size: 27px;
+    }
+
+    .action-button {
+        min-width: 63px;
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .controls {
+        flex-wrap: wrap;
+    }
 }
 </style>
 </head>
 
 <body>
 
-<!-- MAIN MENU -->
+<!-- ======================================================
+     Main menu
+======================================================= -->
+
 <div id="menu">
-  <div class="menu-card">
-    <h1>鋤大D</h1>
-    <div class="subtitle">建立網上房間，朋友可使用代碼加入。<br>空位會由電腦玩家自動補上。</div>
+    <div class="menu-card">
+        <h1>鋤大D</h1>
 
-    <div id="menuActions">
-      <label for="nameInput">玩家名稱</label>
-      <input id="nameInput" maxlength="16" value="玩家" placeholder="你的名稱">
+        <div class="subtitle">
+            建立網上房間，朋友可使用代碼加入。<br>
+            空位會由電腦玩家自動補上。
+        </div>
 
-      <button id="createButton" class="menu-btn gold">建立房間</button>
+        <div id="menuActions">
+            <label for="nameInput">玩家名稱</label>
 
-      <div class="divider">或</div>
+            <input
+                id="nameInput"
+                maxlength="16"
+                value="玩家"
+                placeholder="你的名稱"
+            >
 
-      <input id="codeInput" maxlength="6" placeholder="輸入 6 位房間代碼">
-      <button id="joinButton" class="menu-btn">加入房間</button>
+            <button id="createButton" class="menu-button gold">
+                建立房間
+            </button>
+
+            <div class="divider">或</div>
+
+            <input
+                id="codeInput"
+                maxlength="6"
+                placeholder="輸入 6 位房間代碼"
+                autocomplete="off"
+            >
+
+            <button id="joinButton" class="menu-button">
+                加入房間
+            </button>
+        </div>
+
+        <div id="lobby" class="hidden">
+            <div class="room-box">
+                <span>房間代碼</span>
+                <strong id="roomCode">------</strong>
+                <button id="copyButton">複製</button>
+            </div>
+
+            <div id="seats"></div>
+            <div id="lobbyStatus"></div>
+
+            <button id="startButton" class="menu-button gold hidden">
+                開始遊戲（電腦補滿空位）
+            </button>
+        </div>
+
+        <div id="menuMessage">
+            建立房間，或輸入朋友的房間代碼。
+        </div>
     </div>
-
-    <div id="lobby" class="hidden">
-      <div class="room-box">
-        <span>房間代碼</span>
-        <strong id="roomCode">------</strong>
-        <button id="copyButton">複製</button>
-      </div>
-
-      <div id="seats"></div>
-      <div id="lobbyStatus"></div>
-
-      <button id="startButton" class="menu-btn gold hidden">
-        開始遊戲（電腦補滿空位）
-      </button>
-    </div>
-
-    <div id="menuMessage">建立房間，或輸入朋友的房間代碼。</div>
-  </div>
 </div>
 
-<!-- GAME -->
+<!-- ======================================================
+     Game
+======================================================= -->
+
 <div id="game">
-  <div class="top">
-    <div class="logo">鋤大D 3D</div>
-    <div id="info" class="info"></div>
-  </div>
-
-  <div id="message" class="notice">等待遊戲開始</div>
-  <button id="rulesButton">?</button>
-
-  <div class="table-wrap">
-    <div class="table">
-      <div id="player0" class="player bottom"></div>
-      <div id="player1" class="player left"></div>
-      <div id="player2" class="player top"></div>
-      <div id="player3" class="player right"></div>
-
-      <div class="center">
-        <div id="trickLabel">自由出牌</div>
-        <div id="tableCards"></div>
-      </div>
+    <div class="top-bar">
+        <div class="logo">鋤大D 3D</div>
+        <div id="gameInfo" class="game-info"></div>
     </div>
-  </div>
 
-  <div id="penalty" class="hidden"></div>
-  <div id="hand"></div>
+    <div id="message" class="notice">
+        等待遊戲開始
+    </div>
 
-  <div class="controls">
-    <div id="timer">30</div>
-    <button id="hintButton" class="action">提示</button>
-    <button id="clearButton" class="action">取消選牌</button>
-    <button id="passButton" class="action red">PASS</button>
-    <button id="playButton" class="action gold">出牌</button>
-    <button id="nextButton" class="action gold hidden">下一局</button>
-    <button id="deeButton" class="action red hidden">Dee 重發</button>
-  </div>
+    <button id="rulesButton">?</button>
+
+    <div class="table-wrap">
+        <div class="table">
+            <div id="player0" class="player bottom"></div>
+            <div id="player1" class="player left"></div>
+            <div id="player2" class="player top"></div>
+            <div id="player3" class="player right"></div>
+
+            <div class="center-area">
+                <div id="trickLabel">自由出牌</div>
+                <div id="tableCards"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="penalty" class="hidden"></div>
+    <div id="hand"></div>
+
+    <div class="controls">
+        <div id="timer">30</div>
+
+        <button id="hintButton" class="action-button">
+            提示
+        </button>
+
+        <button id="clearButton" class="action-button">
+            取消選牌
+        </button>
+
+        <button id="passButton" class="action-button red">
+            PASS
+        </button>
+
+        <button id="playButton" class="action-button gold">
+            出牌
+        </button>
+
+        <button id="deeButton" class="action-button red hidden">
+            驗證 Dee
+        </button>
+
+        <button id="nextButton" class="action-button gold hidden">
+            下一局
+        </button>
+    </div>
 </div>
 
-<!-- RULES -->
+<!-- ======================================================
+     Rules modal
+======================================================= -->
+
 <div id="rulesModal" class="modal">
-  <div class="modal-content">
-    <button id="closeRules" class="close">關閉</button>
-    <h2>鋤大D規則</h2>
+    <div class="modal-content">
+        <button id="closeRules" class="close-button">
+            關閉
+        </button>
 
-    <h3>牌的大小</h3>
-    <ul>
-      <li>點數：2 ＞ A ＞ K ＞ Q ＞ J ＞ 10 ＞ 9 ＞ 8 ＞ 7 ＞ 6 ＞ 5 ＞ 4 ＞ 3</li>
-      <li>花色：黑桃 ＞ 紅心 ＞ 梅花 ＞ 方塊</li>
-    </ul>
+        <h2>鋤大D規則</h2>
 
-    <h3>牌型</h3>
-    <ul>
-      <li>單張</li>
-      <li>一對：兩張相同點數</li>
-      <li>三條：三張相同點數</li>
-      <li>蛇、花、俘虜、四條、同花順</li>
-      <li>五張牌大小：蛇 ＜ 花 ＜ 俘虜 ＜ 四條 ＜ 同花順</li>
-      <li>A-2-3-4-5 是最大蛇。</li>
-      <li>不接受 J-Q-K-A-2、Q-K-A-2-3、K-A-3-4-5。</li>
-    </ul>
+        <h3>牌的大小</h3>
 
-    <h3>遊戲流程</h3>
-    <ul>
-      <li>第一局由持有方塊 3 的玩家開始，首次出牌必須包括方塊 3。</li>
-      <li>之後由上一局勝出者開始。</li>
-      <li>必須出相同牌數並大於上一手，否則可以 PASS。</li>
-      <li>其餘三家 PASS 後，最後出牌者可自由選擇牌型。</li>
-      <li>剩下一張牌時會自動顯示「Last Card」。</li>
-      <li>每回合限時 30 秒。</li>
-      <li>非法牌會被扣起，其他手牌打完後才會收回。</li>
-      <li>房主負責派牌、計時及控制電腦玩家。</li>
-    </ul>
-  </div>
+        <ul>
+            <li>
+                點數：2 ＞ A ＞ K ＞ Q ＞ J ＞ 10 ＞ 9 ＞
+                8 ＞ 7 ＞ 6 ＞ 5 ＞ 4 ＞ 3
+            </li>
+            <li>
+                花色：黑桃 ＞ 紅心 ＞ 梅花 ＞ 方塊
+            </li>
+        </ul>
+
+        <h3>牌型</h3>
+
+        <ul>
+            <li>單張</li>
+            <li>一對：兩張相同點數</li>
+            <li>三條：三張相同點數</li>
+            <li>蛇、花、俘虜、四條、同花順</li>
+            <li>
+                五張牌大小：
+                蛇 ＜ 花 ＜ 俘虜 ＜ 四條 ＜ 同花順
+            </li>
+            <li>A-2-3-4-5 是最大蛇。</li>
+            <li>
+                不接受 J-Q-K-A-2、Q-K-A-2-3、
+                K-A-3-4-5。
+            </li>
+        </ul>
+
+        <h3>跟牌規則</h3>
+
+        <ul>
+            <li>
+                上一手出一張，下一位只能出一張或 PASS。
+            </li>
+            <li>
+                上一手出兩張，下一位只能出兩張或 PASS。
+            </li>
+            <li>
+                上一手出三張，下一位只能出三張或 PASS。
+            </li>
+            <li>
+                上一手出五張，下一位只能出五張或 PASS。
+            </li>
+            <li>
+                錯誤牌數及非法牌型會被拒絕，不會離開手牌。
+            </li>
+        </ul>
+
+        <h3>雙公無煙 Dee</h3>
+
+        <ul>
+            <li>
+                此版本定義為：手牌剛好只有兩張 J／Q／K，
+                而且沒有 A 或 2。
+            </li>
+            <li>
+                只可在本局第一次出牌前申請。
+            </li>
+            <li>
+                房主會使用真正的手牌資料驗證，玩家不能自行確認。
+            </li>
+        </ul>
+
+        <h3>遊戲流程</h3>
+
+        <ul>
+            <li>
+                第一局由持有方塊 3 的玩家開始，
+                首次出牌必須包括方塊 3。
+            </li>
+            <li>之後由上一局勝出者開始。</li>
+            <li>
+                其餘三家 PASS 後，最後出牌者可自由選擇牌型。
+            </li>
+            <li>
+                剩下一張牌時會顯示 Last Card。
+            </li>
+            <li>每回合限時 30 秒。</li>
+            <li>
+                房主負責洗牌、派牌、計時、規則驗證及電腦玩家。
+            </li>
+        </ul>
+    </div>
 </div>
 
 <script>
 "use strict";
 
 /* =========================================================
-   規則修正補丁
-   1. 驗證「雙公無煙 Dee」
-   2. 阻止錯誤牌數及非法牌型
-   3. 使用加密安全隨機洗牌
+   Constants
 ========================================================= */
 
-/* ---------------------------------------------------------
-   加密安全隨機數
---------------------------------------------------------- */
+const RANKS = [
+    "3", "4", "5", "6", "7", "8", "9",
+    "10", "J", "Q", "K", "A", "2"
+];
 
-function secureRandomInteger(maxExclusive) {
-    if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) {
-        throw new Error("secureRandomInteger requires a positive integer.");
+const SUITS = [
+    {
+        code: "D",
+        symbol: "♦",
+        power: 0,
+        red: true
+    },
+    {
+        code: "C",
+        symbol: "♣",
+        power: 1,
+        red: false
+    },
+    {
+        code: "H",
+        symbol: "♥",
+        power: 2,
+        red: true
+    },
+    {
+        code: "S",
+        symbol: "♠",
+        power: 3,
+        red: false
     }
+];
 
-    if (!window.crypto || !window.crypto.getRandomValues) {
+const TYPE_NAMES = {
+    single: "單張",
+    pair: "一對",
+    triple: "三條",
+    straight: "蛇",
+    flush: "花",
+    fullHouse: "俘虜",
+    fourKind: "四條",
+    straightFlush: "同花順"
+};
+
+const FIVE_CARD_POWER = {
+    straight: 0,
+    flush: 1,
+    fullHouse: 2,
+    fourKind: 3,
+    straightFlush: 4
+};
+
+const PLAYER_ICONS = [
+    "😎",
+    "🧑🏻",
+    "👩🏻",
+    "🧔🏻"
+];
+
+/* =========================================================
+   Network and game state
+========================================================= */
+
+const network = {
+    peer: null,
+    hostConnection: null,
+    connections: new Map(),
+
+    seats: [
+        null,
+        null,
+        null,
+        null
+    ],
+
+    roomCode: "",
+    localSeat: 0,
+
+    isHost: false,
+    connected: false,
+    started: false
+};
+
+const game = {
+    players: [],
+
+    round: 1,
+    dealer: null,
+    winner: null,
+    turn: 0,
+
+    direction: 1,
+    dealDirection: -1,
+
+    firstTurn: true,
+    roundOver: false,
+
+    lastPlay: null,
+    lastPlayer: null,
+    passCount: 0,
+
+    selected: new Set(),
+
+    timeLeft: 30,
+    timerId: null,
+    aiTimer: null,
+
+    wins: [0, 0, 0, 0],
+
+    statusText: "等待遊戲開始",
+    statusType: "notice"
+};
+
+/* =========================================================
+   DOM elements
+========================================================= */
+
+const element = id => document.getElementById(id);
+
+const menuElement = element("menu");
+const menuActionsElement = element("menuActions");
+const lobbyElement = element("lobby");
+const seatsElement = element("seats");
+const roomCodeElement = element("roomCode");
+const lobbyStatusElement = element("lobbyStatus");
+const menuMessageElement = element("menuMessage");
+
+const nameInput = element("nameInput");
+const codeInput = element("codeInput");
+
+const createButton = element("createButton");
+const joinButton = element("joinButton");
+const startButton = element("startButton");
+const copyButton = element("copyButton");
+
+const handElement = element("hand");
+const tableCardsElement = element("tableCards");
+const trickLabelElement = element("trickLabel");
+const messageElement = element("message");
+const timerElement = element("timer");
+const gameInfoElement = element("gameInfo");
+const penaltyElement = element("penalty");
+
+const playButton = element("playButton");
+const passButton = element("passButton");
+const hintButton = element("hintButton");
+const clearButton = element("clearButton");
+const nextButton = element("nextButton");
+const deeButton = element("deeButton");
+
+/* =========================================================
+   Secure random numbers
+========================================================= */
+
+/*
+    Returns a secure unbiased random integer between
+    zero and maxExclusive - 1.
+
+    This uses rejection sampling to avoid modulo bias.
+*/
+function secureRandomInteger(maxExclusive) {
+    if (
+        !Number.isInteger(maxExclusive) ||
+        maxExclusive <= 0
+    ) {
         throw new Error(
-            "此瀏覽器不支援安全隨機數。請使用 HTTPS 及較新的瀏覽器。"
+            "maxExclusive must be a positive integer."
         );
     }
 
-    const range = 0x100000000;
-    const limit = Math.floor(range / maxExclusive) * maxExclusive;
-    const randomBuffer = new Uint32Array(1);
+    if (
+        !window.crypto ||
+        !window.crypto.getRandomValues
+    ) {
+        throw new Error(
+            "This browser does not support secure random numbers."
+        );
+    }
 
-    let value;
+    const fullRange = 0x100000000;
+    const acceptableLimit =
+        Math.floor(fullRange / maxExclusive) *
+        maxExclusive;
+
+    const randomBuffer = new Uint32Array(1);
+    let randomValue;
 
     do {
         window.crypto.getRandomValues(randomBuffer);
-        value = randomBuffer[0];
-    } while (value >= limit);
+        randomValue = randomBuffer[0];
+    } while (randomValue >= acceptableLimit);
 
-    return value % maxExclusive;
+    return randomValue % maxExclusive;
 }
 
 /*
-   取代原本使用 Math.random() 的洗牌功能。
-
-   使用無偏差 Fisher-Yates shuffle 配合
-   crypto.getRandomValues()。
+    Secure Fisher-Yates shuffle.
 */
-shuffle = function secureShuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = secureRandomInteger(i + 1);
+function secureShuffle(array) {
+    for (
+        let currentIndex = array.length - 1;
+        currentIndex > 0;
+        currentIndex--
+    ) {
+        const randomIndex =
+            secureRandomInteger(currentIndex + 1);
 
-        [array[i], array[j]] = [array[j], array[i]];
+        [
+            array[currentIndex],
+            array[randomIndex]
+        ] = [
+            array[randomIndex],
+            array[currentIndex]
+        ];
     }
 
     return array;
-};
+}
 
-/* 房間代碼亦改用安全隨機數。 */
-randomCode = function secureRoomCode() {
-    const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function generateSecureRoomCode() {
+    const characters =
+        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
     let result = "";
 
-    for (let i = 0; i < 6; i++) {
+    for (let index = 0; index < 6; index++) {
         result += characters[
             secureRandomInteger(characters.length)
         ];
     }
 
     return result;
-};
+}
 
+/* =========================================================
+   General utility functions
+========================================================= */
 
-/* ---------------------------------------------------------
-   「雙公無煙 Dee」判定
---------------------------------------------------------- */
+function safeHTML(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function cleanPlayerName(value) {
+    return String(value || "")
+        .replace(/[<>]/g, "")
+        .trim()
+        .slice(0, 16) || "玩家";
+}
+
+function peerRoomID(code) {
+    return "chodai-d-" + code.toLowerCase();
+}
+
+function setMenuMessage(text, type = "") {
+    menuMessageElement.textContent = text;
+    menuMessageElement.className = type;
+}
+
+function lockMenuButtons(locked) {
+    createButton.disabled = locked;
+    joinButton.disabled = locked;
+}
+
+function nextSeat(
+    playerIndex,
+    direction = game.direction
+) {
+    return (
+        playerIndex +
+        direction +
+        4
+    ) % 4;
+}
+
+function playerHandCount(playerIndex) {
+    const player = game.players[playerIndex];
+
+    if (!player) {
+        return 0;
+    }
+
+    return player.handCount ??
+        player.hand.length;
+}
+
+function clearTurnTimers() {
+    clearInterval(game.timerId);
+    clearTimeout(game.aiTimer);
+
+    game.timerId = null;
+    game.aiTimer = null;
+}
+
+/* =========================================================
+   Lobby: create room
+========================================================= */
+
+function createRoom() {
+    if (typeof Peer === "undefined") {
+        setMenuMessage(
+            "無法載入網絡功能，請檢查網絡連線。",
+            "error"
+        );
+        return;
+    }
+
+    const roomCode = generateSecureRoomCode();
+
+    network.roomCode = roomCode;
+    network.isHost = true;
+    network.localSeat = 0;
+
+    network.seats = [
+        {
+            name: cleanPlayerName(nameInput.value),
+            bot: false
+        },
+        null,
+        null,
+        null
+    ];
+
+    lockMenuButtons(true);
+    setMenuMessage("正在建立房間……");
+
+    network.peer = new Peer(
+        peerRoomID(roomCode)
+    );
+
+    network.peer.on("open", () => {
+        network.connected = true;
+
+        showLobby();
+        updateLobby();
+
+        setMenuMessage(
+            "房間建立成功。",
+            "good"
+        );
+    });
+
+    network.peer.on(
+        "connection",
+        connection => {
+            connection.on(
+                "data",
+                data => handleHostNetworkMessage(
+                    connection,
+                    data
+                )
+            );
+
+            connection.on(
+                "close",
+                () => handleGuestDisconnected(
+                    connection
+                )
+            );
+
+            connection.on(
+                "error",
+                () => handleGuestDisconnected(
+                    connection
+                )
+            );
+        }
+    );
+
+    network.peer.on("error", error => {
+        console.error(error);
+
+        setMenuMessage(
+            "建立房間失敗：" +
+            (error.type || error.message),
+            "error"
+        );
+
+        lockMenuButtons(false);
+    });
+}
+
+/* =========================================================
+   Lobby: join room
+========================================================= */
+
+function joinRoom() {
+    if (typeof Peer === "undefined") {
+        setMenuMessage(
+            "無法載入網絡功能。",
+            "error"
+        );
+        return;
+    }
+
+    const roomCode = codeInput.value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 6);
+
+    if (roomCode.length !== 6) {
+        setMenuMessage(
+            "請輸入有效的 6 位房間代碼。",
+            "error"
+        );
+        return;
+    }
+
+    network.roomCode = roomCode;
+    network.isHost = false;
+
+    lockMenuButtons(true);
+    setMenuMessage("正在加入房間……");
+
+    network.peer = new Peer();
+
+    network.peer.on("open", () => {
+        const connection = network.peer.connect(
+            peerRoomID(roomCode),
+            {
+                reliable: true,
+                serialization: "json"
+            }
+        );
+
+        network.hostConnection = connection;
+
+        connection.on("open", () => {
+            connection.send({
+                type: "hello",
+                name: cleanPlayerName(
+                    nameInput.value
+                )
+            });
+        });
+
+        connection.on(
+            "data",
+            handleClientNetworkMessage
+        );
+
+        connection.on("close", () => {
+            if (network.connected) {
+                clearTurnTimers();
+
+                alert(
+                    "房主已離線，遊戲中止。"
+                );
+
+                window.location.reload();
+            }
+        });
+
+        connection.on("error", error => {
+            console.error(error);
+
+            setMenuMessage(
+                "無法連接房間。",
+                "error"
+            );
+
+            lockMenuButtons(false);
+        });
+
+        window.setTimeout(() => {
+            if (!network.connected) {
+                setMenuMessage(
+                    "找不到房間，請確認代碼。",
+                    "error"
+                );
+
+                lockMenuButtons(false);
+            }
+        }, 9000);
+    });
+
+    network.peer.on("error", error => {
+        console.error(error);
+
+        setMenuMessage(
+            "連線錯誤：" +
+            (error.type || error.message),
+            "error"
+        );
+
+        lockMenuButtons(false);
+    });
+}
+
+/* =========================================================
+   Host network message handling
+========================================================= */
+
+function handleHostNetworkMessage(
+    connection,
+    data
+) {
+    if (
+        !data ||
+        typeof data !== "object"
+    ) {
+        return;
+    }
+
+    if (data.type === "hello") {
+        acceptGuest(connection, data.name);
+        return;
+    }
+
+    if (data.type === "action") {
+        handleRemoteAction(connection, data);
+    }
+}
+
+function acceptGuest(connection, requestedName) {
+    if (network.started) {
+        connection.send({
+            type: "connectionError",
+            message: "遊戲已經開始。"
+        });
+
+        window.setTimeout(
+            () => connection.close(),
+            300
+        );
+
+        return;
+    }
+
+    if (connection.playerSeat !== undefined) {
+        return;
+    }
+
+    const availableSeat =
+        network.seats.findIndex(
+            (seat, index) =>
+                index > 0 &&
+                seat === null
+        );
+
+    if (availableSeat === -1) {
+        connection.send({
+            type: "connectionError",
+            message: "房間已滿。"
+        });
+
+        window.setTimeout(
+            () => connection.close(),
+            300
+        );
+
+        return;
+    }
+
+    connection.playerSeat = availableSeat;
+
+    network.connections.set(
+        availableSeat,
+        connection
+    );
+
+    network.seats[availableSeat] = {
+        name: cleanPlayerName(requestedName),
+        bot: false
+    };
+
+    connection.send({
+        type: "assigned",
+        seat: availableSeat,
+        seats: network.seats,
+        roomCode: network.roomCode
+    });
+
+    broadcastLobby();
+    updateLobby();
+}
+
+/* =========================================================
+   Client network message handling
+========================================================= */
+
+function handleClientNetworkMessage(data) {
+    if (
+        !data ||
+        typeof data !== "object"
+    ) {
+        return;
+    }
+
+    if (data.type === "assigned") {
+        network.localSeat = data.seat;
+        network.seats = data.seats;
+        network.connected = true;
+
+        showLobby();
+        updateLobby();
+
+        setMenuMessage(
+            "成功加入房間。",
+            "good"
+        );
+
+        return;
+    }
+
+    if (data.type === "lobby") {
+        network.seats = data.seats;
+        updateLobby();
+        return;
+    }
+
+    if (data.type === "state") {
+        network.started = true;
+        menuElement.classList.add("hidden");
+
+        applyNetworkState(data.state);
+        return;
+    }
+
+    if (data.type === "actionError") {
+        setMessage(
+            data.message ||
+            "房主拒絕了這個操作。",
+            "bad"
+        );
+        return;
+    }
+
+    if (data.type === "connectionError") {
+        setMenuMessage(
+            data.message,
+            "error"
+        );
+
+        lockMenuButtons(false);
+    }
+}
+
+/* =========================================================
+   Disconnection handling
+========================================================= */
+
+function handleGuestDisconnected(connection) {
+    if (
+        connection.playerSeat === undefined
+    ) {
+        return;
+    }
+
+    const disconnectedSeat =
+        connection.playerSeat;
+
+    network.connections.delete(
+        disconnectedSeat
+    );
+
+    if (!network.started) {
+        network.seats[disconnectedSeat] = null;
+
+        broadcastLobby();
+        updateLobby();
+        return;
+    }
+
+    const originalName =
+        game.players[disconnectedSeat]?.name ||
+        "玩家";
+
+    network.seats[disconnectedSeat] = {
+        name: originalName + "（電腦接管）",
+        bot: true
+    };
+
+    if (game.players[disconnectedSeat]) {
+        game.players[disconnectedSeat].name =
+            network.seats[disconnectedSeat].name;
+
+        game.players[disconnectedSeat].bot =
+            true;
+    }
+
+    setMessage(
+        originalName +
+        " 已離線，由電腦接管。",
+        "bad"
+    );
+
+    synchronizeGameState();
+
+    if (
+        game.turn === disconnectedSeat &&
+        !game.roundOver
+    ) {
+        clearTurnTimers();
+        beginTurn();
+    }
+}
+
+/* =========================================================
+   Lobby rendering
+========================================================= */
+
+function showLobby() {
+    menuActionsElement.classList.add("hidden");
+    lobbyElement.classList.remove("hidden");
+
+    roomCodeElement.textContent =
+        network.roomCode;
+
+    startButton.classList.toggle(
+        "hidden",
+        !network.isHost
+    );
+}
+
+function updateLobby() {
+    seatsElement.innerHTML = "";
+
+    for (
+        let seatIndex = 0;
+        seatIndex < 4;
+        seatIndex++
+    ) {
+        const seat =
+            network.seats[seatIndex];
+
+        const seatElement =
+            document.createElement("div");
+
+        seatElement.className =
+            "seat " +
+            (seat ? "ready" : "");
+
+        seatElement.innerHTML = `
+            <span>
+                ${seatIndex === 0 ? "👑" : "🪑"}
+                座位 ${seatIndex + 1}：
+                ${
+                    seat
+                        ? safeHTML(seat.name)
+                        : "等待玩家"
+                }
+            </span>
+
+            <small>
+                ${
+                    seat
+                        ? (
+                            seat.bot
+                                ? "電腦"
+                                : "已連線"
+                        )
+                        : "空位／電腦補上"
+                }
+            </small>
+        `;
+
+        seatsElement.appendChild(
+            seatElement
+        );
+    }
+
+    const humanCount =
+        network.seats.filter(
+            seat => seat && !seat.bot
+        ).length;
+
+    lobbyStatusElement.textContent =
+        network.isHost
+            ? (
+                `目前有 ${humanCount} 位真人玩家，` +
+                "可以隨時開始。"
+            )
+            : (
+                `目前有 ${humanCount} 位真人玩家，` +
+                "等待房主開始。"
+            );
+}
+
+function broadcastLobby() {
+    if (!network.isHost) {
+        return;
+    }
+
+    for (
+        const connection
+        of network.connections.values()
+    ) {
+        if (connection.open) {
+            connection.send({
+                type: "lobby",
+                seats: network.seats
+            });
+        }
+    }
+}
+
+function startOnlineGame() {
+    if (
+        !network.isHost ||
+        network.started
+    ) {
+        return;
+    }
+
+    for (
+        let seatIndex = 0;
+        seatIndex < 4;
+        seatIndex++
+    ) {
+        if (!network.seats[seatIndex]) {
+            network.seats[seatIndex] = {
+                name: `電腦 ${seatIndex + 1}`,
+                bot: true
+            };
+        }
+    }
+
+    network.started = true;
+    menuElement.classList.add("hidden");
+
+    startRound();
+}
+
+/* =========================================================
+   Deck creation and secure distribution
+========================================================= */
+
+function createDeck() {
+    const deck = [];
+    let cardID = 0;
+
+    for (
+        let rankPower = 0;
+        rankPower < RANKS.length;
+        rankPower++
+    ) {
+        for (const suit of SUITS) {
+            deck.push({
+                id: cardID++,
+                rank: RANKS[rankPower],
+                rankPower,
+                suit: suit.code,
+                suitPower: suit.power,
+                symbol: suit.symbol,
+                red: suit.red
+            });
+        }
+    }
+
+    return deck;
+}
+
+function sortHand(hand) {
+    hand.sort(
+        (first, second) =>
+            first.rankPower -
+            second.rankPower ||
+            first.suitPower -
+            second.suitPower
+    );
+}
+
+function findDiamondThreeOwner() {
+    return game.players.findIndex(
+        player =>
+            player.hand.some(
+                card =>
+                    card.rank === "3" &&
+                    card.suit === "D"
+            )
+    );
+}
+
+/* =========================================================
+   Card combination analysis
+========================================================= */
+
+function createRankGroups(cards) {
+    const rankMap = new Map();
+
+    for (const card of cards) {
+        if (!rankMap.has(card.rankPower)) {
+            rankMap.set(
+                card.rankPower,
+                []
+            );
+        }
+
+        rankMap
+            .get(card.rankPower)
+            .push(card);
+    }
+
+    return [...rankMap.entries()]
+        .map(([rank, groupedCards]) => ({
+            rank,
+            cards: groupedCards,
+            count: groupedCards.length
+        }));
+}
 
 /*
-   雙公：
-   手牌中剛好有兩張公仔牌，即 J、Q、K。
+    Legal straights:
+    3-4-5-6-7 through 10-J-Q-K-A
+    A-2-3-4-5 is the largest.
 
-   無煙 Dee：
-   手牌中沒有 A，亦沒有 2。
+    J-Q-K-A-2, Q-K-A-2-3 and K-A-3-4-5
+    are not accepted.
 */
-function hasDoubleCourtNoAceTwo(hand) {
-    if (!Array.isArray(hand) || hand.length !== 13) {
+function getStraightInformation(cards) {
+    if (cards.length !== 5) {
+        return null;
+    }
+
+    const uniqueRanks = [
+        ...new Set(
+            cards.map(
+                card => card.rankPower
+            )
+        )
+    ].sort((first, second) =>
+        first - second
+    );
+
+    if (uniqueRanks.length !== 5) {
+        return null;
+    }
+
+    for (
+        let startRank = 0;
+        startRank <= 7;
+        startRank++
+    ) {
+        const expectedRanks = [
+            startRank,
+            startRank + 1,
+            startRank + 2,
+            startRank + 3,
+            startRank + 4
+        ];
+
+        const matches =
+            expectedRanks.every(
+                (rank, index) =>
+                    rank === uniqueRanks[index]
+            );
+
+        if (matches) {
+            const highestRank =
+                startRank + 4;
+
+            const highestSuit =
+                Math.max(
+                    ...cards
+                        .filter(
+                            card =>
+                                card.rankPower ===
+                                highestRank
+                        )
+                        .map(
+                            card =>
+                                card.suitPower
+                        )
+                );
+
+            return {
+                sequencePower: startRank,
+                highestSuit
+            };
+        }
+    }
+
+    const aceTwoThreeFourFive = [
+        0,
+        1,
+        2,
+        11,
+        12
+    ];
+
+    const isAceTwoThreeFourFive =
+        aceTwoThreeFourFive.every(
+            (rank, index) =>
+                rank === uniqueRanks[index]
+        );
+
+    if (isAceTwoThreeFourFive) {
+        const highestSuit =
+            Math.max(
+                ...cards
+                    .filter(
+                        card =>
+                            card.rankPower === 12
+                    )
+                    .map(
+                        card =>
+                            card.suitPower
+                    )
+            );
+
+        return {
+            sequencePower: 8,
+            highestSuit
+        };
+    }
+
+    return null;
+}
+
+function invalidAnalysis(cards) {
+    return {
+        valid: false,
+        count: cards.length,
+        type: "invalid",
+        key: [],
+        cards: [...cards]
+    };
+}
+
+function analyzeCards(cards) {
+    const sortedCards = [...cards]
+        .sort(
+            (first, second) =>
+                first.rankPower -
+                second.rankPower ||
+                first.suitPower -
+                second.suitPower
+        );
+
+    if (cards.length === 1) {
+        const card = cards[0];
+
+        return {
+            valid: true,
+            count: 1,
+            type: "single",
+            key: [
+                card.rankPower,
+                card.suitPower
+            ],
+            cards: sortedCards
+        };
+    }
+
+    const rankGroups =
+        createRankGroups(cards);
+
+    if (cards.length === 2) {
+        if (rankGroups.length !== 1) {
+            return invalidAnalysis(cards);
+        }
+
+        return {
+            valid: true,
+            count: 2,
+            type: "pair",
+            key: [
+                cards[0].rankPower,
+                Math.max(
+                    ...cards.map(
+                        card => card.suitPower
+                    )
+                )
+            ],
+            cards: sortedCards
+        };
+    }
+
+    if (cards.length === 3) {
+        if (rankGroups.length !== 1) {
+            return invalidAnalysis(cards);
+        }
+
+        return {
+            valid: true,
+            count: 3,
+            type: "triple",
+            key: [
+                cards[0].rankPower
+            ],
+            cards: sortedCards
+        };
+    }
+
+    if (cards.length !== 5) {
+        return invalidAnalysis(cards);
+    }
+
+    const isFlush =
+        cards.every(
+            card =>
+                card.suit ===
+                cards[0].suit
+        );
+
+    const straightInformation =
+        getStraightInformation(cards);
+
+    if (
+        isFlush &&
+        straightInformation
+    ) {
+        return {
+            valid: true,
+            count: 5,
+            type: "straightFlush",
+            key: [
+                FIVE_CARD_POWER.straightFlush,
+                straightInformation.sequencePower,
+                straightInformation.highestSuit
+            ],
+            cards: sortedCards
+        };
+    }
+
+    const fourCardGroup =
+        rankGroups.find(
+            group => group.count === 4
+        );
+
+    if (fourCardGroup) {
+        return {
+            valid: true,
+            count: 5,
+            type: "fourKind",
+            key: [
+                FIVE_CARD_POWER.fourKind,
+                fourCardGroup.rank
+            ],
+            cards: sortedCards
+        };
+    }
+
+    const threeCardGroup =
+        rankGroups.find(
+            group => group.count === 3
+        );
+
+    const pairGroup =
+        rankGroups.find(
+            group => group.count === 2
+        );
+
+    if (
+        threeCardGroup &&
+        pairGroup
+    ) {
+        return {
+            valid: true,
+            count: 5,
+            type: "fullHouse",
+            key: [
+                FIVE_CARD_POWER.fullHouse,
+                threeCardGroup.rank
+            ],
+            cards: sortedCards
+        };
+    }
+
+    if (isFlush) {
+        const descendingRanks =
+            [...cards]
+                .sort(
+                    (first, second) =>
+                        second.rankPower -
+                        first.rankPower ||
+                        second.suitPower -
+                        first.suitPower
+                )
+                .map(
+                    card => card.rankPower
+                );
+
+        return {
+            valid: true,
+            count: 5,
+            type: "flush",
+            key: [
+                FIVE_CARD_POWER.flush,
+                ...descendingRanks,
+                cards[0].suitPower
+            ],
+            cards: sortedCards
+        };
+    }
+
+    if (straightInformation) {
+        return {
+            valid: true,
+            count: 5,
+            type: "straight",
+            key: [
+                FIVE_CARD_POWER.straight,
+                straightInformation.sequencePower,
+                straightInformation.highestSuit
+            ],
+            cards: sortedCards
+        };
+    }
+
+    return invalidAnalysis(cards);
+}
+
+function compareKeys(firstKey, secondKey) {
+    const comparisonLength =
+        Math.max(
+            firstKey.length,
+            secondKey.length
+        );
+
+    for (
+        let index = 0;
+        index < comparisonLength;
+        index++
+    ) {
+        const firstValue =
+            firstKey[index] ?? 0;
+
+        const secondValue =
+            secondKey[index] ?? 0;
+
+        if (firstValue !== secondValue) {
+            return firstValue - secondValue;
+        }
+    }
+
+    return 0;
+}
+
+function combinationBeats(
+    candidate,
+    previous
+) {
+    return (
+        candidate.valid &&
+        previous?.valid &&
+        candidate.count === previous.count &&
+        compareKeys(
+            candidate.key,
+            previous.key
+        ) > 0
+    );
+}
+
+function containsDiamondThree(cards) {
+    return cards.some(
+        card =>
+            card.rank === "3" &&
+            card.suit === "D"
+    );
+}
+
+function isFreeLead(playerIndex) {
+    return (
+        game.lastPlay === null ||
+        game.lastPlayer === playerIndex
+    );
+}
+
+/* =========================================================
+   Generate card combinations
+========================================================= */
+
+function generateCombinations(
+    array,
+    requiredSize
+) {
+    const result = [];
+
+    function walk(
+        startIndex,
+        selectedItems
+    ) {
+        if (
+            selectedItems.length ===
+            requiredSize
+        ) {
+            result.push(
+                [...selectedItems]
+            );
+            return;
+        }
+
+        const itemsStillNeeded =
+            requiredSize -
+            selectedItems.length;
+
+        for (
+            let index = startIndex;
+            index <=
+                array.length -
+                itemsStillNeeded;
+            index++
+        ) {
+            selectedItems.push(array[index]);
+
+            walk(
+                index + 1,
+                selectedItems
+            );
+
+            selectedItems.pop();
+        }
+    }
+
+    walk(0, []);
+
+    return result;
+}
+
+/* =========================================================
+   Legal play generation
+========================================================= */
+
+function getLegalPlays(
+    playerIndex,
+    ignoreTopCardRule = false
+) {
+    const player =
+        game.players[playerIndex];
+
+    if (!player) {
+        return [];
+    }
+
+    const requiredSizes =
+        isFreeLead(playerIndex)
+            ? [1, 2, 3, 5]
+            : [game.lastPlay.count];
+
+    const legalPlays = [];
+
+    for (
+        const requiredSize
+        of requiredSizes
+    ) {
+        if (
+            player.hand.length <
+            requiredSize
+        ) {
+            continue;
+        }
+
+        const possibleCombinations =
+            generateCombinations(
+                player.hand,
+                requiredSize
+            );
+
+        for (
+            const cards
+            of possibleCombinations
+        ) {
+            const analysis =
+                analyzeCards(cards);
+
+            if (!analysis.valid) {
+                continue;
+            }
+
+            if (
+                game.round === 1 &&
+                game.firstTurn &&
+                !containsDiamondThree(cards)
+            ) {
+                continue;
+            }
+
+            if (
+                !isFreeLead(playerIndex) &&
+                !combinationBeats(
+                    analysis,
+                    game.lastPlay
+                )
+            ) {
+                continue;
+            }
+
+            legalPlays.push({
+                cards,
+                analysis
+            });
+        }
+    }
+
+    legalPlays.sort(
+        (first, second) =>
+            first.analysis.count -
+            second.analysis.count ||
+            compareKeys(
+                first.analysis.key,
+                second.analysis.key
+            )
+    );
+
+    /*
+        If the next player has one card,
+        a single-card play must be the
+        strongest legal single.
+    */
+    if (
+        !ignoreTopCardRule &&
+        playerHandCount(
+            nextSeat(playerIndex)
+        ) === 1
+    ) {
+        const legalSingles =
+            legalPlays.filter(
+                play =>
+                    play.analysis.count === 1
+            );
+
+        if (legalSingles.length) {
+            return [
+                legalSingles[
+                    legalSingles.length - 1
+                ]
+            ];
+        }
+    }
+
+    return legalPlays;
+}
+
+/* =========================================================
+   Strict play validation
+========================================================= */
+
+function checkPlay(playerIndex, cards) {
+    if (!cards.length) {
+        return {
+            ok: false,
+            reason: "請先選擇要出的牌。"
+        };
+    }
+
+    /*
+        Enforce exactly the same number
+        of cards as the previous play.
+    */
+    if (
+        !isFreeLead(playerIndex) &&
+        game.lastPlay &&
+        cards.length !==
+            game.lastPlay.count
+    ) {
+        return {
+            ok: false,
+            reason:
+                `上一手出了 ${game.lastPlay.count} 張牌，` +
+                `你必須出 ${game.lastPlay.count} 張牌，` +
+                "或選擇 PASS。"
+        };
+    }
+
+    const analysis =
+        analyzeCards(cards);
+
+    if (!analysis.valid) {
+        return {
+            ok: false,
+            reason: "這不是合法牌型。",
+            analysis
+        };
+    }
+
+    if (
+        game.round === 1 &&
+        game.firstTurn &&
+        !containsDiamondThree(cards)
+    ) {
+        return {
+            ok: false,
+            reason:
+                "第一局首次出牌必須包括方塊 3。",
+            analysis
+        };
+    }
+
+    if (!isFreeLead(playerIndex)) {
+        if (
+            !combinationBeats(
+                analysis,
+                game.lastPlay
+            )
+        ) {
+            return {
+                ok: false,
+                reason:
+                    "所出的牌不大於上一手。",
+                analysis
+            };
+        }
+    }
+
+    /*
+        Top-card rule.
+    */
+    if (
+        playerHandCount(
+            nextSeat(playerIndex)
+        ) === 1 &&
+        analysis.count === 1
+    ) {
+        const legalSingles =
+            getLegalPlays(
+                playerIndex,
+                true
+            ).filter(
+                play =>
+                    play.analysis.count === 1
+            );
+
+        if (legalSingles.length) {
+            legalSingles.sort(
+                (first, second) =>
+                    compareKeys(
+                        first.analysis.key,
+                        second.analysis.key
+                    )
+            );
+
+            const strongestSingle =
+                legalSingles[
+                    legalSingles.length - 1
+                ];
+
+            if (
+                compareKeys(
+                    analysis.key,
+                    strongestSingle.analysis.key
+                ) < 0
+            ) {
+                return {
+                    ok: false,
+                    reason:
+                        "下家只剩一張牌，" +
+                        "你必須打出最大的合法單張。",
+                    analysis
+                };
+            }
+        }
+    }
+
+    return {
+        ok: true,
+        reason: "",
+        analysis
+    };
+}
+
+/* =========================================================
+   Verified Dee rule
+========================================================= */
+
+/*
+    Dee definition used in this game:
+
+    - The hand has exactly two cards
+      among J, Q and K.
+    - The hand has no Ace.
+    - The hand has no 2.
+*/
+function handQualifiesForDee(hand) {
+    if (
+        !Array.isArray(hand) ||
+        hand.length !== 13
+    ) {
         return false;
     }
 
-    const courtCardCount = hand.filter(card =>
-        card.rank === "J" ||
-        card.rank === "Q" ||
-        card.rank === "K"
-    ).length;
+    const courtCardCount =
+        hand.filter(
+            card =>
+                card.rank === "J" ||
+                card.rank === "Q" ||
+                card.rank === "K"
+        ).length;
 
-    const hasAceOrTwo = hand.some(card =>
-        card.rank === "A" || card.rank === "2"
+    const containsAceOrTwo =
+        hand.some(
+            card =>
+                card.rank === "A" ||
+                card.rank === "2"
+        );
+
+    return (
+        courtCardCount === 2 &&
+        !containsAceOrTwo
     );
-
-    return courtCardCount === 2 && !hasAceOrTwo;
 }
 
-function canRequestDee(playerIndex) {
+function verifyDeeRequest(playerIndex) {
     if (
-        !net.started ||
-        game.roundOver ||
+        !network.started ||
+        game.roundOver
+    ) {
+        return {
+            valid: false,
+            reason: "現在不能申請 Dee。"
+        };
+    }
+
+    if (
         !game.firstTurn ||
         game.lastPlay !== null
     ) {
         return {
             valid: false,
-            reason: "Dee 只可以在本局第一次出牌前申請。"
+            reason:
+                "Dee 只可以在本局第一次出牌前申請。"
         };
     }
 
-    const player = game.players[playerIndex];
+    const player =
+        game.players[playerIndex];
 
-    if (!player || !Array.isArray(player.hand)) {
+    if (
+        !player ||
+        !Array.isArray(player.hand)
+    ) {
         return {
             valid: false,
-            reason: "無法驗證玩家的手牌。"
+            reason:
+                "無法驗證玩家的手牌。"
         };
     }
 
-    if (!hasDoubleCourtNoAceTwo(player.hand)) {
+    if (
+        !handQualifiesForDee(
+            player.hand
+        )
+    ) {
         return {
             valid: false,
             reason:
                 "不符合「雙公無煙 Dee」：" +
-                "必須剛好有兩張 J／Q／K，而且沒有 A 或 2。"
+                "必須剛好有兩張 J／Q／K，" +
+                "而且沒有 A 或 2。"
         };
     }
 
@@ -483,24 +2678,22 @@ function canRequestDee(playerIndex) {
 }
 
 function approveDee(playerIndex) {
-    const verification = canRequestDee(playerIndex);
+    const verification =
+        verifyDeeRequest(playerIndex);
 
     if (!verification.valid) {
         return verification;
     }
 
     const playerName =
-        game.players[playerIndex]?.name || `玩家 ${playerIndex + 1}`;
+        game.players[playerIndex].name;
 
     setMessage(
-        `${playerName}的手牌已確認符合「雙公無煙 Dee」，正在重新派牌。`,
+        `${playerName}的手牌已確認符合` +
+        "「雙公無煙 Dee」，正在重新派牌。",
         "notice"
     );
 
-    /*
-       startRound(true) 保留現時局數，
-       並以重發方式開始。
-    */
     startRound(true);
 
     return {
@@ -510,155 +2703,543 @@ function approveDee(playerIndex) {
 }
 
 function requestDee() {
-    const seat = net.localSeat;
-
-    if (!net.started || game.roundOver) {
-        setMessage("現在不能申請 Dee。", "bad");
-        return;
-    }
-
-    /*
-       房主直接在權威遊戲狀態中驗證自己的手牌。
-    */
-    if (net.isHost) {
-        const result = approveDee(seat);
-
-        if (!result.valid) {
-            setMessage(result.reason, "bad");
-        }
-
-        return;
-    }
-
-    /*
-       其他玩家只負責提出申請。
-       房主會使用房主所保存的真實手牌重新驗證，
-       不會信任玩家瀏覽器提供的牌。
-    */
-    if (!net.hostConnection || !net.hostConnection.open) {
-        setMessage("無法連接房主，不能申請 Dee。", "bad");
-        return;
-    }
-
-    net.hostConnection.send({
-        type: "action",
-        action: "dee"
-    });
-
-    setMessage("已向房主申請驗證「雙公無煙 Dee」。", "notice");
-}
-
-
-/* ---------------------------------------------------------
-   嚴格出牌驗證
---------------------------------------------------------- */
-
-/*
-   本地玩家出牌。
-
-   舊版本會把非法牌扣起，看起來像玩家仍然成功
-   出了錯誤牌數。新版本會直接拒絕，不會移走手牌。
-*/
-humanPlay = function strictHumanPlay() {
-    const seat = net.localSeat;
-    const player = game.players[seat];
+    const localSeat =
+        network.localSeat;
 
     if (
-        game.roundOver ||
-        game.turn !== seat ||
-        !player ||
-        player.bot
-    ) {
-        return;
-    }
-
-    const cards = player.hand.filter(card =>
-        game.selected.has(card.id)
-    );
-
-    if (cards.length === 0) {
-        setMessage("請先選擇要出的牌。", "bad");
-        return;
-    }
-
-    /*
-       如果不是自由出牌，必須跟上一手相同牌數。
-    */
-    if (
-        !isFreeLead(seat) &&
-        game.lastPlay &&
-        cards.length !== game.lastPlay.count
+        !network.started ||
+        game.roundOver
     ) {
         setMessage(
-            `上一手出了 ${game.lastPlay.count} 張牌，` +
-            `你亦必須出 ${game.lastPlay.count} 張牌，或選擇 PASS。`,
+            "現在不能申請 Dee。",
             "bad"
         );
         return;
     }
 
-    /*
-       客戶端先作本地驗證，改善反應速度。
-       房主仍會再次驗證，防止修改瀏覽器程式作弊。
-    */
-    const localCheck = checkPlay(seat, cards);
+    if (network.isHost) {
+        const result =
+            approveDee(localSeat);
 
-    if (!localCheck.ok) {
-        setMessage(localCheck.reason, "bad");
+        if (!result.valid) {
+            setMessage(
+                result.reason,
+                "bad"
+            );
+        }
+
         return;
     }
 
-    if (!net.isHost) {
-        if (!net.hostConnection || !net.hostConnection.open) {
-            setMessage("與房主的連線已中斷。", "bad");
+    if (
+        !network.hostConnection ||
+        !network.hostConnection.open
+    ) {
+        setMessage(
+            "無法連接房主，不能申請 Dee。",
+            "bad"
+        );
+        return;
+    }
+
+    network.hostConnection.send({
+        type: "action",
+        action: "dee"
+    });
+
+    setMessage(
+        "已向房主申請驗證 Dee。",
+        "notice"
+    );
+}
+
+/* =========================================================
+   Start a round
+========================================================= */
+
+function startRound(isRedeal = false) {
+    if (!network.isHost) {
+        return;
+    }
+
+    clearTurnTimers();
+
+    game.roundOver = false;
+    game.firstTurn = true;
+    game.lastPlay = null;
+    game.lastPlayer = null;
+    game.passCount = 0;
+    game.selected.clear();
+
+    if (
+        game.round === 1 ||
+        game.dealer === null
+    ) {
+        game.dealer =
+            secureRandomInteger(4);
+
+        game.direction = 1;
+        game.dealDirection = -1;
+    } else if (!isRedeal) {
+        game.dealer = game.winner;
+        game.direction *= -1;
+        game.dealDirection *= -1;
+    }
+
+    game.players =
+        network.seats.map(
+            (seat, index) => ({
+                name: seat.name,
+                bot: seat.bot,
+                hand: [],
+                penalty: [],
+                handCount: 0,
+                index
+            })
+        );
+
+    /*
+        Create a new deck, securely shuffle
+        it and deal every card exactly once.
+    */
+    const deck =
+        secureShuffle(createDeck());
+
+    let recipient =
+        game.dealer;
+
+    for (const card of deck) {
+        game.players[
+            recipient
+        ].hand.push(card);
+
+        recipient = nextSeat(
+            recipient,
+            game.dealDirection
+        );
+    }
+
+    for (const player of game.players) {
+        sortHand(player.hand);
+        player.handCount =
+            player.hand.length;
+    }
+
+    game.turn =
+        game.round === 1
+            ? findDiamondThreeOwner()
+            : game.winner;
+
+    nextButton.classList.add("hidden");
+
+    setMessage(
+        game.round === 1
+            ? (
+                `${game.players[game.turn].name}` +
+                "持有方塊 3，必須首先出牌。"
+            )
+            : (
+                `${game.players[game.turn].name}` +
+                "是上局勝出者，首先出牌。"
+            ),
+        "notice"
+    );
+
+    renderEverything();
+    beginTurn();
+}
+
+/* =========================================================
+   Commit a valid play
+========================================================= */
+
+function commitPlay(
+    playerIndex,
+    cards,
+    analysis
+) {
+    if (!network.isHost) {
+        return;
+    }
+
+    clearTurnTimers();
+
+    const player =
+        game.players[playerIndex];
+
+    const playedCardIDs =
+        new Set(
+            cards.map(
+                card => card.id
+            )
+        );
+
+    player.hand =
+        player.hand.filter(
+            card =>
+                !playedCardIDs.has(
+                    card.id
+                )
+        );
+
+    player.handCount =
+        player.hand.length;
+
+    game.selected.clear();
+
+    game.lastPlay = {
+        ...analysis,
+        cards: [...cards]
+    };
+
+    game.lastPlayer =
+        playerIndex;
+
+    game.passCount = 0;
+    game.firstTurn = false;
+
+    let description =
+        `${player.name}打出` +
+        `${TYPE_NAMES[analysis.type]}：` +
+        cards
+            .map(
+                card =>
+                    card.symbol +
+                    card.rank
+            )
+            .join(" ");
+
+    if (player.hand.length === 1) {
+        description +=
+            " — Last Card！";
+    }
+
+    setMessage(
+        description,
+        player.hand.length === 1
+            ? "notice"
+            : "good"
+    );
+
+    if (player.hand.length === 0) {
+        finishRound(playerIndex);
+        return;
+    }
+
+    game.turn =
+        nextSeat(playerIndex);
+
+    renderEverything();
+    beginTurn();
+}
+
+/* =========================================================
+   Pass
+========================================================= */
+
+function commitPass(playerIndex) {
+    if (!network.isHost) {
+        return;
+    }
+
+    clearTurnTimers();
+
+    if (isFreeLead(playerIndex)) {
+        sendActionErrorToSeat(
+            playerIndex,
+            "自由出牌時不能 PASS。"
+        );
+
+        return;
+    }
+
+    game.passCount++;
+
+    setMessage(
+        `${game.players[playerIndex].name}` +
+        "選擇 PASS。",
+        "notice"
+    );
+
+    if (game.passCount >= 3) {
+        const newLeader =
+            game.lastPlayer;
+
+        game.lastPlay = null;
+        game.passCount = 0;
+        game.turn = newLeader;
+
+        setMessage(
+            "其餘三家全部 PASS，" +
+            `${game.players[newLeader].name}` +
+            "可以自由出牌。",
+            "notice"
+        );
+    } else {
+        game.turn =
+            nextSeat(playerIndex);
+    }
+
+    renderEverything();
+    beginTurn();
+}
+
+/* =========================================================
+   Finish round
+========================================================= */
+
+function finishRound(playerIndex) {
+    clearTurnTimers();
+
+    game.roundOver = true;
+    game.winner = playerIndex;
+
+    game.wins[playerIndex]++;
+
+    setMessage(
+        `🏆 ${game.players[playerIndex].name}` +
+        `勝出第 ${game.round} 局！`,
+        "good"
+    );
+
+    renderEverything();
+    synchronizeGameState();
+}
+
+/* =========================================================
+   Human player actions
+========================================================= */
+
+function humanPlay() {
+    const localSeat =
+        network.localSeat;
+
+    const localPlayer =
+        game.players[localSeat];
+
+    if (
+        game.roundOver ||
+        game.turn !== localSeat ||
+        !localPlayer ||
+        localPlayer.bot
+    ) {
+        return;
+    }
+
+    const selectedCards =
+        localPlayer.hand.filter(
+            card =>
+                game.selected.has(
+                    card.id
+                )
+        );
+
+    /*
+        Validate locally first.
+        The host will validate again.
+    */
+    const check =
+        checkPlay(
+            localSeat,
+            selectedCards
+        );
+
+    if (!check.ok) {
+        setMessage(
+            check.reason,
+            "bad"
+        );
+        return;
+    }
+
+    if (!network.isHost) {
+        if (
+            !network.hostConnection ||
+            !network.hostConnection.open
+        ) {
+            setMessage(
+                "與房主的連線已中斷。",
+                "bad"
+            );
             return;
         }
 
-        net.hostConnection.send({
+        network.hostConnection.send({
             type: "action",
             action: "play",
-            cardIds: cards.map(card => card.id)
+            cardIds:
+                selectedCards.map(
+                    card => card.id
+                )
         });
 
-        /*
-           等待房主回傳新狀態。
-           不在客戶端自行移走啤牌。
-        */
-        setMessage("等待房主確認出牌……", "notice");
+        setMessage(
+            "等待房主確認出牌……",
+            "notice"
+        );
+
         return;
     }
 
-    commitPlay(seat, cards, localCheck.analysis);
-};
+    commitPlay(
+        localSeat,
+        selectedCards,
+        check.analysis
+    );
+}
 
+function humanPass() {
+    const localSeat =
+        network.localSeat;
 
-/* ---------------------------------------------------------
-   房主驗證其他玩家的操作
---------------------------------------------------------- */
-
-handleRemoteAction = function strictRemoteAction(connection, data) {
-    const seat = connection.seat;
+    const localPlayer =
+        game.players[localSeat];
 
     if (
-        seat === undefined ||
-        !game.players[seat] ||
-        game.players[seat].bot
+        game.roundOver ||
+        game.turn !== localSeat ||
+        !localPlayer ||
+        localPlayer.bot
+    ) {
+        return;
+    }
+
+    if (isFreeLead(localSeat)) {
+        setMessage(
+            "自由出牌時不能 PASS。",
+            "bad"
+        );
+        return;
+    }
+
+    if (network.isHost) {
+        commitPass(localSeat);
+    } else {
+        network.hostConnection.send({
+            type: "action",
+            action: "pass"
+        });
+    }
+}
+
+function showHint() {
+    const localSeat =
+        network.localSeat;
+
+    const localPlayer =
+        game.players[localSeat];
+
+    if (
+        game.roundOver ||
+        game.turn !== localSeat ||
+        !localPlayer ||
+        localPlayer.bot
+    ) {
+        return;
+    }
+
+    const legalPlays =
+        getLegalPlays(localSeat);
+
+    game.selected.clear();
+
+    if (!legalPlays.length) {
+        setMessage(
+            "沒有可以出的牌，請 PASS。",
+            "notice"
+        );
+
+        renderLocalHand();
+        return;
+    }
+
+    for (
+        const card
+        of legalPlays[0].cards
+    ) {
+        game.selected.add(card.id);
+    }
+
+    setMessage(
+        "提示：可出" +
+        TYPE_NAMES[
+            legalPlays[0].analysis.type
+        ] +
+        "。",
+        "good"
+    );
+
+    renderLocalHand();
+}
+
+/* =========================================================
+   Authoritative remote action validation
+========================================================= */
+
+function sendActionError(
+    connection,
+    message
+) {
+    if (connection?.open) {
+        connection.send({
+            type: "actionError",
+            message
+        });
+    }
+}
+
+function sendActionErrorToSeat(
+    playerIndex,
+    message
+) {
+    if (
+        playerIndex ===
+        network.localSeat
+    ) {
+        setMessage(message, "bad");
+        return;
+    }
+
+    const connection =
+        network.connections.get(
+            playerIndex
+        );
+
+    sendActionError(
+        connection,
+        message
+    );
+}
+
+function handleRemoteAction(
+    connection,
+    data
+) {
+    const playerIndex =
+        connection.playerSeat;
+
+    if (
+        playerIndex === undefined ||
+        !game.players[playerIndex] ||
+        game.players[playerIndex].bot
     ) {
         return;
     }
 
     /*
-       Dee 不需要輪到該玩家才可申請，
-       但一定要在首次出牌之前。
+        Dee can be requested before the
+        first play, even if it is not
+        the requester's turn.
     */
     if (data.action === "dee") {
-        const result = approveDee(seat);
+        const result =
+            approveDee(playerIndex);
 
-        if (!result.valid && connection.open) {
-            connection.send({
-                type: "actionError",
-                message: result.reason
-            });
+        if (!result.valid) {
+            sendActionError(
+                connection,
+                result.reason
+            );
         }
 
         return;
@@ -666,31 +3247,27 @@ handleRemoteAction = function strictRemoteAction(connection, data) {
 
     if (
         game.roundOver ||
-        game.turn !== seat
+        game.turn !== playerIndex
     ) {
-        if (connection.open) {
-            connection.send({
-                type: "actionError",
-                message: "現在不是你的回合。"
-            });
-        }
-
+        sendActionError(
+            connection,
+            "現在不是你的回合。"
+        );
         return;
     }
 
     if (data.action === "pass") {
-        if (isFreeLead(seat)) {
-            if (connection.open) {
-                connection.send({
-                    type: "actionError",
-                    message: "自由出牌時不能 PASS。"
-                });
-            }
-
+        if (
+            isFreeLead(playerIndex)
+        ) {
+            sendActionError(
+                connection,
+                "自由出牌時不能 PASS。"
+            );
             return;
         }
 
-        commitPass(seat);
+        commitPass(playerIndex);
         return;
     }
 
@@ -698,174 +3275,1010 @@ handleRemoteAction = function strictRemoteAction(connection, data) {
         return;
     }
 
-    const requestedIds = Array.isArray(data.cardIds)
-        ? data.cardIds
-        : [];
+    const requestedIDs =
+        Array.isArray(data.cardIds)
+            ? data.cardIds
+            : [];
 
-    /*
-       防止重複 ID。
-    */
-    const uniqueIds = new Set(requestedIds);
+    const uniqueIDs =
+        new Set(requestedIDs);
 
     if (
-        requestedIds.length === 0 ||
-        uniqueIds.size !== requestedIds.length
+        requestedIDs.length === 0 ||
+        requestedIDs.length !==
+            uniqueIDs.size
     ) {
-        if (connection.open) {
-            connection.send({
-                type: "actionError",
-                message: "出牌資料無效。"
-            });
-        }
-
-        return;
-    }
-
-    const cards = game.players[seat].hand.filter(card =>
-        uniqueIds.has(card.id)
-    );
-
-    /*
-       確認所有 ID 都確實屬於該玩家。
-    */
-    if (cards.length !== uniqueIds.size) {
-        if (connection.open) {
-            connection.send({
-                type: "actionError",
-                message: "所選啤牌不屬於你的手牌。"
-            });
-        }
-
+        sendActionError(
+            connection,
+            "出牌資料無效。"
+        );
         return;
     }
 
     /*
-       強制跟相同牌數。
-       例如上一手是兩張牌，便只能出兩張牌。
+        Find the cards from the host's
+        authoritative copy of the hand.
     */
-    if (
-        !isFreeLead(seat) &&
-        game.lastPlay &&
-        cards.length !== game.lastPlay.count
-    ) {
-        if (connection.open) {
-            connection.send({
-                type: "actionError",
-                message:
-                    `上一手出了 ${game.lastPlay.count} 張牌，` +
-                    `你必須出 ${game.lastPlay.count} 張牌，或選擇 PASS。`
-            });
-        }
-
-        return;
-    }
-
-    const verification = checkPlay(seat, cards);
-
-    if (!verification.ok) {
-        if (connection.open) {
-            connection.send({
-                type: "actionError",
-                message: verification.reason
-            });
-        }
-
-        return;
-    }
-
-    /*
-       只有通過所有檢查後才真正出牌。
-    */
-    commitPlay(seat, cards, verification.analysis);
-};
-
-
-/* ---------------------------------------------------------
-   客戶端接收出牌錯誤
---------------------------------------------------------- */
-
-const originalHandleClientMessageForRulePatch =
-    handleClientMessage;
-
-handleClientMessage = function patchedClientMessage(data) {
-    if (!data || typeof data !== "object") {
-        return;
-    }
-
-    if (data.type === "actionError") {
-        setMessage(
-            data.message || "房主拒絕了這個操作。",
-            "bad"
+    const selectedCards =
+        game.players[
+            playerIndex
+        ].hand.filter(
+            card =>
+                uniqueIDs.has(card.id)
         );
 
+    if (
+        selectedCards.length !==
+        uniqueIDs.size
+    ) {
+        sendActionError(
+            connection,
+            "所選啤牌不屬於你的手牌。"
+        );
         return;
     }
 
-    originalHandleClientMessageForRulePatch(data);
-};
-
-
-/* ---------------------------------------------------------
-   Dee 按鈕顯示方式
---------------------------------------------------------- */
-
-const originalRenderControlsForRulePatch =
-    renderControls;
-
-renderControls = function patchedRenderControls() {
-    originalRenderControlsForRulePatch();
-
-    const deePeriodOpen =
-        net.started &&
-        !game.roundOver &&
-        game.firstTurn &&
-        game.lastPlay === null;
-
     /*
-       所有真人玩家都可以在首次出牌前申請 Dee。
-       最終結果由房主驗證。
+        Host verifies card count, card type
+        and whether the play is strong enough.
     */
-    deeButton.classList.toggle(
-        "hidden",
-        !deePeriodOpen ||
-        game.players[net.localSeat]?.bot
+    const check =
+        checkPlay(
+            playerIndex,
+            selectedCards
+        );
+
+    if (!check.ok) {
+        sendActionError(
+            connection,
+            check.reason
+        );
+        return;
+    }
+
+    commitPlay(
+        playerIndex,
+        selectedCards,
+        check.analysis
     );
+}
 
-    deeButton.textContent = "驗證 Dee";
-};
+/* =========================================================
+   Bot AI
+========================================================= */
 
+function chooseBotPlay(playerIndex) {
+    const legalPlays =
+        getLegalPlays(playerIndex);
 
-/* ---------------------------------------------------------
-   取代舊 Dee 按鈕操作
---------------------------------------------------------- */
+    if (!legalPlays.length) {
+        return null;
+    }
 
-deeButton.onclick = requestDee;
+    const player =
+        game.players[playerIndex];
 
+    const winningPlay =
+        legalPlays.find(
+            play =>
+                play.cards.length ===
+                player.hand.length
+        );
 
-/* ---------------------------------------------------------
-   顯示需要跟多少張牌
---------------------------------------------------------- */
-
-const originalRenderTableForRulePatch =
-    renderTable;
-
-renderTable = function patchedRenderTable() {
-    originalRenderTableForRulePatch();
+    if (winningPlay) {
+        return winningPlay;
+    }
 
     if (
-        game.lastPlay &&
-        !isFreeLead(net.localSeat) &&
-        !game.roundOver
+        playerHandCount(
+            nextSeat(playerIndex)
+        ) === 1
     ) {
-        trickLabel.textContent +=
+        const legalSingles =
+            legalPlays.filter(
+                play =>
+                    play.cards.length === 1
+            );
+
+        if (legalSingles.length) {
+            return legalSingles[
+                legalSingles.length - 1
+            ];
+        }
+    }
+
+    if (isFreeLead(playerIndex)) {
+        for (
+            const preferredSize
+            of [5, 3, 2, 1]
+        ) {
+            const preferredPlay =
+                legalPlays.find(
+                    play =>
+                        play.cards.length ===
+                        preferredSize
+                );
+
+            if (preferredPlay) {
+                return preferredPlay;
+            }
+        }
+    }
+
+    return legalPlays[0];
+}
+
+function runBotTurn() {
+    if (
+        !network.isHost ||
+        game.roundOver ||
+        !game.players[game.turn]?.bot
+    ) {
+        return;
+    }
+
+    const botSeat =
+        game.turn;
+
+    const chosenPlay =
+        chooseBotPlay(botSeat);
+
+    game.aiTimer =
+        window.setTimeout(() => {
+            if (
+                game.roundOver ||
+                game.turn !== botSeat ||
+                !game.players[botSeat]?.bot
+            ) {
+                return;
+            }
+
+            if (chosenPlay) {
+                commitPlay(
+                    botSeat,
+                    chosenPlay.cards,
+                    chosenPlay.analysis
+                );
+            } else {
+                commitPass(botSeat);
+            }
+        }, 700 + secureRandomInteger(901));
+}
+
+/* =========================================================
+   Turn timer
+========================================================= */
+
+function beginTurn() {
+    if (game.roundOver) {
+        return;
+    }
+
+    renderEverything();
+
+    /*
+        Only the host controls the timer.
+    */
+    if (!network.isHost) {
+        return;
+    }
+
+    clearTurnTimers();
+
+    game.timeLeft = 30;
+
+    updateTimer();
+    synchronizeGameState();
+
+    game.timerId =
+        window.setInterval(() => {
+            game.timeLeft--;
+
+            updateTimer();
+            synchronizeGameState();
+
+            if (game.timeLeft <= 0) {
+                clearTurnTimers();
+                handleTimeout();
+            }
+        }, 1000);
+
+    if (
+        game.players[game.turn].bot
+    ) {
+        runBotTurn();
+    }
+}
+
+function handleTimeout() {
+    const playerIndex =
+        game.turn;
+
+    if (isFreeLead(playerIndex)) {
+        const legalPlays =
+            getLegalPlays(playerIndex);
+
+        if (legalPlays.length) {
+            setMessage(
+                `${game.players[playerIndex].name}` +
+                "逾時，自動出牌。",
+                "bad"
+            );
+
+            commitPlay(
+                playerIndex,
+                legalPlays[0].cards,
+                legalPlays[0].analysis
+            );
+        }
+
+        return;
+    }
+
+    setMessage(
+        `${game.players[playerIndex].name}` +
+        "逾時，自動 PASS。",
+        "bad"
+    );
+
+    commitPass(playerIndex);
+}
+
+function updateTimer() {
+    timerElement.textContent =
+        game.timeLeft;
+
+    timerElement.classList.toggle(
+        "warning",
+        game.timeLeft <= 10
+    );
+
+    timerElement.classList.toggle(
+        "danger",
+        game.timeLeft <= 5
+    );
+}
+
+/* =========================================================
+   Network state synchronization
+========================================================= */
+
+function createStateForSeat(playerSeat) {
+    return {
+        round: game.round,
+        dealer: game.dealer,
+        winner: game.winner,
+        turn: game.turn,
+
+        direction: game.direction,
+        dealDirection:
+            game.dealDirection,
+
+        firstTurn: game.firstTurn,
+        roundOver: game.roundOver,
+
+        lastPlay: game.lastPlay,
+        lastPlayer: game.lastPlayer,
+        passCount: game.passCount,
+
+        timeLeft: game.timeLeft,
+        wins: [...game.wins],
+
+        statusText: game.statusText,
+        statusType: game.statusType,
+
+        players:
+            game.players.map(
+                (player, index) => ({
+                    name: player.name,
+                    bot: player.bot,
+                    index,
+
+                    /*
+                        Only send a player their
+                        own actual cards.
+                    */
+                    hand:
+                        index === playerSeat
+                            ? player.hand
+                            : [],
+
+                    penalty:
+                        index === playerSeat
+                            ? player.penalty
+                            : [],
+
+                    handCount:
+                        player.hand.length,
+
+                    penaltyCount:
+                        player.penalty.length
+                })
+            )
+    };
+}
+
+function synchronizeGameState() {
+    if (
+        !network.isHost ||
+        !network.started
+    ) {
+        return;
+    }
+
+    for (
+        const [playerSeat, connection]
+        of network.connections
+    ) {
+        if (connection.open) {
+            connection.send({
+                type: "state",
+                state:
+                    createStateForSeat(
+                        playerSeat
+                    )
+            });
+        }
+    }
+}
+
+function applyNetworkState(state) {
+    if (network.isHost) {
+        return;
+    }
+
+    game.round = state.round;
+    game.dealer = state.dealer;
+    game.winner = state.winner;
+    game.turn = state.turn;
+
+    game.direction =
+        state.direction;
+
+    game.dealDirection =
+        state.dealDirection;
+
+    game.firstTurn =
+        state.firstTurn;
+
+    game.roundOver =
+        state.roundOver;
+
+    game.lastPlay =
+        state.lastPlay;
+
+    game.lastPlayer =
+        state.lastPlayer;
+
+    game.passCount =
+        state.passCount;
+
+    game.timeLeft =
+        state.timeLeft;
+
+    game.wins =
+        state.wins;
+
+    game.statusText =
+        state.statusText;
+
+    game.statusType =
+        state.statusType;
+
+    game.players =
+        state.players;
+
+    const currentHandIDs =
+        new Set(
+            game.players[
+                network.localSeat
+            ].hand.map(
+                card => card.id
+            )
+        );
+
+    game.selected =
+        new Set(
+            [...game.selected]
+                .filter(
+                    cardID =>
+                        currentHandIDs.has(
+                            cardID
+                        )
+                )
+        );
+
+    messageElement.textContent =
+        game.statusText;
+
+    messageElement.className =
+        game.statusType;
+
+    updateTimer();
+    renderEverything();
+}
+
+/* =========================================================
+   Rendering cards
+========================================================= */
+
+function cardHTML(
+    card,
+    extraClass = ""
+) {
+    return `
+        <div class="
+            card
+            ${card.red ? "red" : ""}
+            ${extraClass}
+        ">
+            <div class="card-corner">
+                ${card.rank}<br>
+                ${card.symbol}
+            </div>
+
+            <div class="card-symbol">
+                ${card.symbol}
+            </div>
+
+            <div class="card-corner bottom">
+                ${card.rank}<br>
+                ${card.symbol}
+            </div>
+        </div>
+    `;
+}
+
+function renderLocalHand() {
+    handElement.innerHTML = "";
+
+    const localPlayer =
+        game.players[
+            network.localSeat
+        ];
+
+    if (!localPlayer) {
+        return;
+    }
+
+    localPlayer.hand.forEach(
+        (card, index) => {
+            const wrapper =
+                document.createElement("div");
+
+            wrapper.innerHTML =
+                cardHTML(
+                    card,
+                    "hand-card " +
+                    (
+                        game.selected.has(
+                            card.id
+                        )
+                            ? "selected"
+                            : ""
+                    )
+                );
+
+            const cardElement =
+                wrapper.firstElementChild;
+
+            cardElement.style.zIndex =
+                index;
+
+            cardElement.addEventListener(
+                "click",
+                () => {
+                    if (
+                        game.roundOver ||
+                        game.turn !==
+                            network.localSeat ||
+                        localPlayer.bot
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        game.selected.has(
+                            card.id
+                        )
+                    ) {
+                        game.selected.delete(
+                            card.id
+                        );
+                    } else {
+                        game.selected.add(
+                            card.id
+                        );
+                    }
+
+                    renderLocalHand();
+                }
+            );
+
+            handElement.appendChild(
+                cardElement
+            );
+        }
+    );
+}
+
+/* =========================================================
+   Rendering players
+========================================================= */
+
+function renderPlayers() {
+    if (!game.players.length) {
+        return;
+    }
+
+    for (
+        let visualPosition = 0;
+        visualPosition < 4;
+        visualPosition++
+    ) {
+        const actualSeat =
+            (
+                network.localSeat +
+                visualPosition
+            ) % 4;
+
+        const player =
+            game.players[actualSeat];
+
+        const playerZone =
+            element(
+                "player" +
+                visualPosition
+            );
+
+        const cardCount =
+            playerHandCount(actualSeat);
+
+        playerZone.classList.toggle(
+            "active",
+            game.turn === actualSeat &&
+            !game.roundOver
+        );
+
+        playerZone.classList.toggle(
+            "winner",
+            game.roundOver &&
+            game.winner === actualSeat
+        );
+
+        const cardBacks =
+            visualPosition === 0
+                ? ""
+                : `
+                    <div class="mini-hand">
+                        ${
+                            Array.from(
+                                {
+                                    length:
+                                        Math.min(
+                                            cardCount,
+                                            10
+                                        )
+                                },
+                                () =>
+                                    '<div class="mini-card"></div>'
+                            ).join("")
+                        }
+                    </div>
+                `;
+
+        const penaltyCount =
+            player.penaltyCount ??
+            player.penalty.length;
+
+        playerZone.innerHTML = `
+            ${cardBacks}
+
+            <div class="player-panel">
+                <div class="avatar">
+                    ${
+                        player.bot
+                            ? "🤖"
+                            : (
+                                PLAYER_ICONS[
+                                    actualSeat
+                                ] || "😎"
+                            )
+                    }
+                </div>
+
+                <div class="player-name">
+                    ${safeHTML(player.name)}
+                    ${
+                        game.dealer ===
+                        actualSeat
+                            ? " 🎴"
+                            : ""
+                    }
+                </div>
+
+                <div class="player-meta">
+                    ${cardCount} 張牌
+
+                    ${
+                        cardCount === 1
+                            ? "｜⚠ Last Card"
+                            : ""
+                    }
+
+                    ${
+                        penaltyCount > 0
+                            ? (
+                                "｜扣牌 " +
+                                penaltyCount
+                            )
+                            : ""
+                    }
+
+                    ｜勝 ${game.wins[actualSeat]}
+                </div>
+            </div>
+        `;
+    }
+}
+
+/* =========================================================
+   Rendering table
+========================================================= */
+
+function renderTable() {
+    tableCardsElement.innerHTML = "";
+
+    if (!game.lastPlay) {
+        trickLabelElement.textContent =
+            game.roundOver
+                ? "本局完結"
+                : "自由出牌";
+
+        return;
+    }
+
+    let label =
+        `${game.players[game.lastPlayer].name}：` +
+        TYPE_NAMES[
+            game.lastPlay.type
+        ];
+
+    if (
+        !game.roundOver &&
+        !isFreeLead(
+            network.localSeat
+        )
+    ) {
+        label +=
             `｜必須跟 ${game.lastPlay.count} 張`;
     }
-};
 
-console.log(
-    "規則修正已載入：Dee 驗證、嚴格牌數驗證、加密安全洗牌。"
+    trickLabelElement.textContent =
+        label;
+
+    for (
+        const card
+        of game.lastPlay.cards
+    ) {
+        const wrapper =
+            document.createElement("div");
+
+        wrapper.innerHTML =
+            cardHTML(
+                card,
+                "table-card"
+            );
+
+        tableCardsElement.appendChild(
+            wrapper.firstElementChild
+        );
+    }
+}
+
+/* =========================================================
+   Rendering controls
+========================================================= */
+
+function renderControls() {
+    const localSeat =
+        network.localSeat;
+
+    const localPlayer =
+        game.players[localSeat];
+
+    const isLocalTurn =
+        Boolean(localPlayer) &&
+        !localPlayer.bot &&
+        game.turn === localSeat &&
+        !game.roundOver;
+
+    playButton.disabled =
+        !isLocalTurn;
+
+    hintButton.disabled =
+        !isLocalTurn;
+
+    clearButton.disabled =
+        !isLocalTurn;
+
+    passButton.disabled =
+        !isLocalTurn ||
+        isFreeLead(localSeat);
+
+    const deePeriodIsOpen =
+        network.started &&
+        !game.roundOver &&
+        game.firstTurn &&
+        game.lastPlay === null &&
+        localPlayer &&
+        !localPlayer.bot;
+
+    deeButton.classList.toggle(
+        "hidden",
+        !deePeriodIsOpen
+    );
+
+    nextButton.classList.toggle(
+        "hidden",
+        !network.isHost ||
+        !game.roundOver
+    );
+}
+
+/* =========================================================
+   Rendering penalty information
+========================================================= */
+
+function renderPenaltyInformation() {
+    const localPlayer =
+        game.players[
+            network.localSeat
+        ];
+
+    if (
+        !localPlayer ||
+        !localPlayer.penalty.length
+    ) {
+        penaltyElement.classList.add(
+            "hidden"
+        );
+        return;
+    }
+
+    penaltyElement.classList.remove(
+        "hidden"
+    );
+
+    penaltyElement.textContent =
+        "被扣起的非法牌：" +
+        localPlayer.penalty
+            .map(
+                card =>
+                    card.symbol +
+                    card.rank
+            )
+            .join(" ");
+}
+
+/* =========================================================
+   Rendering game information
+========================================================= */
+
+function renderGameInformation() {
+    const playDirection =
+        game.direction === 1
+            ? "順時針"
+            : "逆時針";
+
+    const dealingDirection =
+        game.dealDirection === 1
+            ? "順時針"
+            : "逆時針";
+
+    gameInfoElement.innerHTML =
+        `房間 ${network.roomCode}｜` +
+        (
+            network.isHost
+                ? "房主"
+                : "網上玩家"
+        ) +
+        "<br>" +
+        `第 ${game.round} 局｜` +
+        `派牌 ${dealingDirection}｜` +
+        `出牌 ${playDirection}`;
+}
+
+function renderEverything() {
+    renderPlayers();
+    renderLocalHand();
+    renderTable();
+    renderControls();
+    renderPenaltyInformation();
+    renderGameInformation();
+    updateTimer();
+}
+
+function setMessage(
+    text,
+    type = "notice"
+) {
+    game.statusText = text;
+    game.statusType = type;
+
+    messageElement.textContent = text;
+    messageElement.className = type;
+}
+
+/* =========================================================
+   Event listeners
+========================================================= */
+
+createButton.addEventListener(
+    "click",
+    createRoom
+);
+
+joinButton.addEventListener(
+    "click",
+    joinRoom
+);
+
+startButton.addEventListener(
+    "click",
+    startOnlineGame
+);
+
+copyButton.addEventListener(
+    "click",
+    async () => {
+        try {
+            await navigator.clipboard.writeText(
+                network.roomCode
+            );
+
+            copyButton.textContent =
+                "已複製";
+
+            window.setTimeout(() => {
+                copyButton.textContent =
+                    "複製";
+            }, 1200);
+        } catch {
+            window.prompt(
+                "複製房間代碼：",
+                network.roomCode
+            );
+        }
+    }
+);
+
+codeInput.addEventListener(
+    "input",
+    () => {
+        codeInput.value =
+            codeInput.value
+                .toUpperCase()
+                .replace(
+                    /[^A-Z0-9]/g,
+                    ""
+                )
+                .slice(0, 6);
+    }
+);
+
+codeInput.addEventListener(
+    "keydown",
+    event => {
+        if (event.key === "Enter") {
+            joinRoom();
+        }
+    }
+);
+
+playButton.addEventListener(
+    "click",
+    humanPlay
+);
+
+passButton.addEventListener(
+    "click",
+    humanPass
+);
+
+hintButton.addEventListener(
+    "click",
+    showHint
+);
+
+clearButton.addEventListener(
+    "click",
+    () => {
+        game.selected.clear();
+        renderLocalHand();
+    }
+);
+
+deeButton.addEventListener(
+    "click",
+    requestDee
+);
+
+nextButton.addEventListener(
+    "click",
+    () => {
+        if (
+            !network.isHost ||
+            !game.roundOver
+        ) {
+            return;
+        }
+
+        game.round++;
+        startRound(false);
+    }
+);
+
+element("rulesButton").addEventListener(
+    "click",
+    () => {
+        element("rulesModal")
+            .classList.add("open");
+    }
+);
+
+element("closeRules").addEventListener(
+    "click",
+    () => {
+        element("rulesModal")
+            .classList.remove("open");
+    }
+);
+
+element("rulesModal").addEventListener(
+    "click",
+    event => {
+        if (
+            event.target ===
+            element("rulesModal")
+        ) {
+            element("rulesModal")
+                .classList.remove("open");
+        }
+    }
+);
+
+document.addEventListener(
+    "keydown",
+    event => {
+        if (event.key === "Escape") {
+            element("rulesModal")
+                .classList.remove("open");
+
+            game.selected.clear();
+            renderLocalHand();
+        }
+
+        if (
+            event.key === "Enter" &&
+            menuElement.classList.contains(
+                "hidden"
+            )
+        ) {
+            humanPlay();
+        }
+
+        if (
+            event.code === "Space" &&
+            menuElement.classList.contains(
+                "hidden"
+            )
+        ) {
+            event.preventDefault();
+            humanPass();
+        }
+    }
 );
 </script>
-  
 </body>
 </html>
