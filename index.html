@@ -349,1316 +349,523 @@ input:focus{border-color:var(--gold);box-shadow:0 0 0 3px #ffd86b22}
 <script>
 "use strict";
 
-/* =========================
-   CONSTANTS / STATE
-========================= */
+/* =========================================================
+   規則修正補丁
+   1. 驗證「雙公無煙 Dee」
+   2. 阻止錯誤牌數及非法牌型
+   3. 使用加密安全隨機洗牌
+========================================================= */
 
-const RANKS=["3","4","5","6","7","8","9","10","J","Q","K","A","2"];
-const SUITS=[
-  {code:"D",symbol:"♦",power:0,red:true},
-  {code:"C",symbol:"♣",power:1,red:false},
-  {code:"H",symbol:"♥",power:2,red:true},
-  {code:"S",symbol:"♠",power:3,red:false}
-];
-const TYPE_NAMES={
-  single:"單張",pair:"一對",triple:"三條",straight:"蛇",
-  flush:"花",fullHouse:"俘虜",fourKind:"四條",straightFlush:"同花順"
+/* ---------------------------------------------------------
+   加密安全隨機數
+--------------------------------------------------------- */
+
+function secureRandomInteger(maxExclusive) {
+    if (!Number.isInteger(maxExclusive) || maxExclusive <= 0) {
+        throw new Error("secureRandomInteger requires a positive integer.");
+    }
+
+    if (!window.crypto || !window.crypto.getRandomValues) {
+        throw new Error(
+            "此瀏覽器不支援安全隨機數。請使用 HTTPS 及較新的瀏覽器。"
+        );
+    }
+
+    const range = 0x100000000;
+    const limit = Math.floor(range / maxExclusive) * maxExclusive;
+    const randomBuffer = new Uint32Array(1);
+
+    let value;
+
+    do {
+        window.crypto.getRandomValues(randomBuffer);
+        value = randomBuffer[0];
+    } while (value >= limit);
+
+    return value % maxExclusive;
+}
+
+/*
+   取代原本使用 Math.random() 的洗牌功能。
+
+   使用無偏差 Fisher-Yates shuffle 配合
+   crypto.getRandomValues()。
+*/
+shuffle = function secureShuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = secureRandomInteger(i + 1);
+
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+
+    return array;
 };
-const FIVE_POWER={straight:0,flush:1,fullHouse:2,fourKind:3,straightFlush:4};
-const ICONS=["😎","🧑🏻","👩🏻","🧔🏻"];
 
-const net={
-  peer:null,
-  hostConnection:null,
-  connections:new Map(),
-  seats:[null,null,null,null],
-  room:"",
-  localSeat:0,
-  isHost:false,
-  connected:false,
-  started:false
+/* 房間代碼亦改用安全隨機數。 */
+randomCode = function secureRoomCode() {
+    const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let result = "";
+
+    for (let i = 0; i < 6; i++) {
+        result += characters[
+            secureRandomInteger(characters.length)
+        ];
+    }
+
+    return result;
 };
 
-const game={
-  players:[],
-  round:1,
-  dealer:null,
-  winner:null,
-  turn:0,
-  direction:1,
-  dealDirection:-1,
-  firstTurn:true,
-  roundOver:false,
-  lastPlay:null,
-  lastPlayer:null,
-  passCount:0,
-  selected:new Set(),
-  timeLeft:30,
-  timerId:null,
-  aiTimer:null,
-  wins:[0,0,0,0],
-  statusText:"等待遊戲開始",
-  statusType:"notice"
-};
 
-/* =========================
-   ELEMENTS
-========================= */
+/* ---------------------------------------------------------
+   「雙公無煙 Dee」判定
+--------------------------------------------------------- */
 
-const $=id=>document.getElementById(id);
+/*
+   雙公：
+   手牌中剛好有兩張公仔牌，即 J、Q、K。
 
-const menu=$("menu");
-const menuActions=$("menuActions");
-const lobby=$("lobby");
-const seatsEl=$("seats");
-const roomCodeEl=$("roomCode");
-const lobbyStatus=$("lobbyStatus");
-const menuMessage=$("menuMessage");
-const nameInput=$("nameInput");
-const codeInput=$("codeInput");
-const createButton=$("createButton");
-const joinButton=$("joinButton");
-const startButton=$("startButton");
-
-const handEl=$("hand");
-const tableCardsEl=$("tableCards");
-const trickLabel=$("trickLabel");
-const messageEl=$("message");
-const timerEl=$("timer");
-const infoEl=$("info");
-const penaltyEl=$("penalty");
-
-const playButton=$("playButton");
-const passButton=$("passButton");
-const hintButton=$("hintButton");
-const clearButton=$("clearButton");
-const nextButton=$("nextButton");
-const deeButton=$("deeButton");
-
-/* =========================
-   UTILITIES
-========================= */
-
-function safeText(value){
-  return String(value)
-    .replaceAll("&","&amp;").replaceAll("<","&lt;")
-    .replaceAll(">","&gt;").replaceAll('"',"&quot;");
-}
-
-function cleanName(value){
-  return String(value||"").replace(/[<>]/g,"").trim().slice(0,16)||"玩家";
-}
-
-function randomCode(){
-  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result="";
-  for(let i=0;i<6;i++) result+=chars[Math.floor(Math.random()*chars.length)];
-  return result;
-}
-
-function peerRoomId(code){
-  return "chodai-d-"+code.toLowerCase();
-}
-
-function setMenuMessage(text,type=""){
-  menuMessage.textContent=text;
-  menuMessage.className=type;
-}
-
-function lockMenu(value){
-  createButton.disabled=value;
-  joinButton.disabled=value;
-}
-
-function nextSeat(index,direction=game.direction){
-  return (index+direction+4)%4;
-}
-
-function handCount(index){
-  const player=game.players[index];
-  return player ? (player.handCount ?? player.hand.length) : 0;
-}
-
-function clearTimers(){
-  clearInterval(game.timerId);
-  clearTimeout(game.aiTimer);
-  game.timerId=null;
-  game.aiTimer=null;
-}
-
-/* =========================
-   NETWORK LOBBY
-========================= */
-
-function createRoom(){
-  if(typeof Peer==="undefined"){
-    setMenuMessage("無法載入網絡功能，請檢查網絡連線。","error");
-    return;
-  }
-
-  const code=randomCode();
-  net.room=code;
-  net.isHost=true;
-  net.localSeat=0;
-  net.seats=[
-    {name:cleanName(nameInput.value),bot:false},
-    null,null,null
-  ];
-
-  lockMenu(true);
-  setMenuMessage("正在建立房間……");
-
-  net.peer=new Peer(peerRoomId(code));
-
-  net.peer.on("open",()=>{
-    net.connected=true;
-    showLobby();
-    updateLobby();
-    setMenuMessage("房間建立成功。","good");
-  });
-
-  net.peer.on("connection",connection=>{
-    connection.on("data",data=>handleHostMessage(connection,data));
-    connection.on("close",()=>guestDisconnected(connection));
-    connection.on("error",()=>guestDisconnected(connection));
-  });
-
-  net.peer.on("error",error=>{
-    console.error(error);
-    setMenuMessage("建立房間失敗："+(error.type||error.message),"error");
-    lockMenu(false);
-  });
-}
-
-function joinRoom(){
-  if(typeof Peer==="undefined"){
-    setMenuMessage("無法載入網絡功能。","error");
-    return;
-  }
-
-  const code=codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-  if(code.length!==6){
-    setMenuMessage("請輸入有效的 6 位房間代碼。","error");
-    return;
-  }
-
-  net.room=code;
-  net.isHost=false;
-  lockMenu(true);
-  setMenuMessage("正在加入房間……");
-
-  net.peer=new Peer();
-
-  net.peer.on("open",()=>{
-    const connection=net.peer.connect(peerRoomId(code),{
-      reliable:true,
-      serialization:"json"
-    });
-
-    net.hostConnection=connection;
-
-    connection.on("open",()=>{
-      connection.send({type:"hello",name:cleanName(nameInput.value)});
-    });
-
-    connection.on("data",handleClientMessage);
-
-    connection.on("close",()=>{
-      if(net.connected){
-        clearTimers();
-        alert("房主已離線，遊戲中止。");
-        location.reload();
-      }
-    });
-
-    connection.on("error",()=>{
-      setMenuMessage("無法連接房間。","error");
-      lockMenu(false);
-    });
-
-    setTimeout(()=>{
-      if(!net.connected){
-        setMenuMessage("找不到房間，請確認代碼。","error");
-        lockMenu(false);
-      }
-    },9000);
-  });
-
-  net.peer.on("error",error=>{
-    console.error(error);
-    setMenuMessage("連線錯誤："+(error.type||error.message),"error");
-    lockMenu(false);
-  });
-}
-
-function handleHostMessage(connection,data){
-  if(!data||typeof data!=="object") return;
-
-  if(data.type==="hello"){
-    if(net.started){
-      connection.send({type:"error",message:"遊戲已經開始。"});
-      setTimeout(()=>connection.close(),300);
-      return;
+   無煙 Dee：
+   手牌中沒有 A，亦沒有 2。
+*/
+function hasDoubleCourtNoAceTwo(hand) {
+    if (!Array.isArray(hand) || hand.length !== 13) {
+        return false;
     }
 
-    if(connection.seat!==undefined) return;
-
-    const seat=net.seats.findIndex((value,index)=>index>0&&!value);
-    if(seat<0){
-      connection.send({type:"error",message:"房間已滿。"});
-      setTimeout(()=>connection.close(),300);
-      return;
-    }
-
-    connection.seat=seat;
-    net.connections.set(seat,connection);
-    net.seats[seat]={name:cleanName(data.name),bot:false};
-
-    connection.send({
-      type:"assigned",
-      seat,
-      seats:net.seats,
-      room:net.room
-    });
-
-    broadcastLobby();
-    updateLobby();
-    return;
-  }
-
-  if(data.type==="action"){
-    handleRemoteAction(connection,data);
-  }
-}
-
-function handleClientMessage(data){
-  if(!data||typeof data!=="object") return;
-
-  if(data.type==="assigned"){
-    net.localSeat=data.seat;
-    net.seats=data.seats;
-    net.connected=true;
-    showLobby();
-    updateLobby();
-    setMenuMessage("成功加入房間。","good");
-  }
-
-  if(data.type==="lobby"){
-    net.seats=data.seats;
-    updateLobby();
-  }
-
-  if(data.type==="state"){
-    net.started=true;
-    menu.classList.add("hidden");
-    applyState(data.state);
-  }
-
-  if(data.type==="error"){
-    setMenuMessage(data.message,"error");
-    lockMenu(false);
-  }
-}
-
-function guestDisconnected(connection){
-  if(connection.seat===undefined) return;
-
-  const seat=connection.seat;
-  net.connections.delete(seat);
-
-  if(!net.started){
-    net.seats[seat]=null;
-    broadcastLobby();
-    updateLobby();
-    return;
-  }
-
-  const oldName=game.players[seat]?.name||"玩家";
-  net.seats[seat]={name:oldName+"（電腦接管）",bot:true};
-
-  if(game.players[seat]){
-    game.players[seat].name=net.seats[seat].name;
-    game.players[seat].bot=true;
-  }
-
-  setMessage(oldName+" 已離線，由電腦接管。","bad");
-  syncState();
-
-  if(game.turn===seat&&!game.roundOver){
-    clearTimers();
-    beginTurn();
-  }
-}
-
-function showLobby(){
-  menuActions.classList.add("hidden");
-  lobby.classList.remove("hidden");
-  roomCodeEl.textContent=net.room;
-  startButton.classList.toggle("hidden",!net.isHost);
-}
-
-function updateLobby(){
-  seatsEl.innerHTML="";
-
-  for(let i=0;i<4;i++){
-    const seat=net.seats[i];
-    const element=document.createElement("div");
-    element.className="seat "+(seat?"ready":"");
-    element.innerHTML=`
-      <span>${i===0?"👑":"🪑"} 座位 ${i+1}：
-        ${seat?safeText(seat.name):"等待玩家"}
-      </span>
-      <small>${seat?(seat.bot?"電腦":"已連線"):"空位／電腦補上"}</small>
-    `;
-    seatsEl.appendChild(element);
-  }
-
-  const humans=net.seats.filter(seat=>seat&&!seat.bot).length;
-  lobbyStatus.textContent=net.isHost
-    ?`目前有 ${humans} 位真人玩家，可以隨時開始。`
-    :`目前有 ${humans} 位真人玩家，等待房主開始。`;
-}
-
-function broadcastLobby(){
-  if(!net.isHost) return;
-  for(const connection of net.connections.values()){
-    if(connection.open) connection.send({type:"lobby",seats:net.seats});
-  }
-}
-
-function startOnlineGame(){
-  if(!net.isHost||net.started) return;
-
-  for(let i=0;i<4;i++){
-    if(!net.seats[i]){
-      net.seats[i]={name:"電腦 "+i,bot:true};
-    }
-  }
-
-  net.started=true;
-  menu.classList.add("hidden");
-  startRound();
-}
-
-/* =========================
-   DECK
-========================= */
-
-function createDeck(){
-  const deck=[];
-  let id=0;
-
-  for(let rankPower=0;rankPower<RANKS.length;rankPower++){
-    for(const suit of SUITS){
-      deck.push({
-        id:id++,
-        rank:RANKS[rankPower],
-        rankPower,
-        suit:suit.code,
-        suitPower:suit.power,
-        symbol:suit.symbol,
-        red:suit.red
-      });
-    }
-  }
-  return deck;
-}
-
-function shuffle(array){
-  for(let i=array.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [array[i],array[j]]=[array[j],array[i]];
-  }
-  return array;
-}
-
-function sortHand(hand){
-  hand.sort((a,b)=>a.rankPower-b.rankPower||a.suitPower-b.suitPower);
-}
-
-function findDiamondThree(){
-  return game.players.findIndex(player=>
-    player.hand.some(card=>card.rank==="3"&&card.suit==="D")
-  );
-}
-
-/* =========================
-   CARD ANALYSIS
-========================= */
-
-function rankGroups(cards){
-  const map=new Map();
-  for(const card of cards){
-    if(!map.has(card.rankPower)) map.set(card.rankPower,[]);
-    map.get(card.rankPower).push(card);
-  }
-  return [...map.entries()].map(([rank,cards])=>({
-    rank,cards,count:cards.length
-  }));
-}
-
-function straightInfo(cards){
-  if(cards.length!==5) return null;
-
-  const ranks=[...new Set(cards.map(card=>card.rankPower))].sort((a,b)=>a-b);
-  if(ranks.length!==5) return null;
-
-  for(let start=0;start<=7;start++){
-    const expected=[start,start+1,start+2,start+3,start+4];
-    if(expected.every((value,index)=>value===ranks[index])){
-      const top=start+4;
-      const topSuit=Math.max(...cards.filter(card=>card.rankPower===top).map(card=>card.suitPower));
-      return {sequence:start,topSuit};
-    }
-  }
-
-  const special=[0,1,2,11,12];
-  if(special.every((value,index)=>value===ranks[index])){
-    const topSuit=Math.max(...cards.filter(card=>card.rankPower===12).map(card=>card.suitPower));
-    return {sequence:8,topSuit};
-  }
-
-  return null;
-}
-
-function invalid(cards){
-  return {valid:false,count:cards.length,type:"invalid",key:[],cards:[...cards]};
-}
-
-function analyse(cards){
-  const sorted=[...cards].sort((a,b)=>a.rankPower-b.rankPower||a.suitPower-b.suitPower);
-
-  if(cards.length===1){
-    return {valid:true,count:1,type:"single",key:[cards[0].rankPower,cards[0].suitPower],cards:sorted};
-  }
-
-  const groups=rankGroups(cards);
-
-  if(cards.length===2){
-    if(groups.length!==1) return invalid(cards);
-    return {
-      valid:true,count:2,type:"pair",
-      key:[cards[0].rankPower,Math.max(...cards.map(card=>card.suitPower))],
-      cards:sorted
-    };
-  }
-
-  if(cards.length===3){
-    if(groups.length!==1) return invalid(cards);
-    return {valid:true,count:3,type:"triple",key:[cards[0].rankPower],cards:sorted};
-  }
-
-  if(cards.length!==5) return invalid(cards);
-
-  const flush=cards.every(card=>card.suit===cards[0].suit);
-  const straight=straightInfo(cards);
-
-  if(flush&&straight){
-    return {
-      valid:true,count:5,type:"straightFlush",
-      key:[FIVE_POWER.straightFlush,straight.sequence,straight.topSuit],
-      cards:sorted
-    };
-  }
-
-  const four=groups.find(group=>group.count===4);
-  if(four){
-    return {
-      valid:true,count:5,type:"fourKind",
-      key:[FIVE_POWER.fourKind,four.rank],cards:sorted
-    };
-  }
-
-  const triple=groups.find(group=>group.count===3);
-  const pair=groups.find(group=>group.count===2);
-  if(triple&&pair){
-    return {
-      valid:true,count:5,type:"fullHouse",
-      key:[FIVE_POWER.fullHouse,triple.rank],cards:sorted
-    };
-  }
-
-  if(flush){
-    const ranks=[...cards]
-      .sort((a,b)=>b.rankPower-a.rankPower||b.suitPower-a.suitPower)
-      .map(card=>card.rankPower);
-
-    return {
-      valid:true,count:5,type:"flush",
-      key:[FIVE_POWER.flush,...ranks,cards[0].suitPower],cards:sorted
-    };
-  }
-
-  if(straight){
-    return {
-      valid:true,count:5,type:"straight",
-      key:[FIVE_POWER.straight,straight.sequence,straight.topSuit],cards:sorted
-    };
-  }
-
-  return invalid(cards);
-}
-
-function compareKeys(a,b){
-  for(let i=0;i<Math.max(a.length,b.length);i++){
-    const difference=(a[i]||0)-(b[i]||0);
-    if(difference) return difference;
-  }
-  return 0;
-}
-
-function beats(candidate,previous){
-  return candidate.valid&&previous?.valid&&
-    candidate.count===previous.count&&
-    compareKeys(candidate.key,previous.key)>0;
-}
-
-function includesDiamondThree(cards){
-  return cards.some(card=>card.rank==="3"&&card.suit==="D");
-}
-
-function isFreeLead(playerIndex){
-  return game.lastPlay===null||game.lastPlayer===playerIndex;
-}
-
-/* =========================
-   COMBINATIONS / LEGAL PLAYS
-========================= */
-
-function combinations(array,size){
-  const result=[];
-
-  function walk(start,chosen){
-    if(chosen.length===size){
-      result.push([...chosen]);
-      return;
-    }
-
-    for(let i=start;i<=array.length-(size-chosen.length);i++){
-      chosen.push(array[i]);
-      walk(i+1,chosen);
-      chosen.pop();
-    }
-  }
-
-  walk(0,[]);
-  return result;
-}
-
-function getLegalPlays(playerIndex,ignoreTopRule=false){
-  const player=game.players[playerIndex];
-  if(!player) return [];
-
-  const sizes=isFreeLead(playerIndex)?[1,2,3,5]:[game.lastPlay.count];
-  const result=[];
-
-  for(const size of sizes){
-    if(player.hand.length<size) continue;
-
-    for(const cards of combinations(player.hand,size)){
-      const analysis=analyse(cards);
-      if(!analysis.valid) continue;
-
-      if(game.round===1&&game.firstTurn&&!includesDiamondThree(cards)) continue;
-      if(!isFreeLead(playerIndex)&&!beats(analysis,game.lastPlay)) continue;
-
-      result.push({cards,analysis});
-    }
-  }
-
-  result.sort((a,b)=>
-    a.analysis.count-b.analysis.count||
-    compareKeys(a.analysis.key,b.analysis.key)
-  );
-
-  if(!ignoreTopRule&&handCount(nextSeat(playerIndex))===1){
-    const singles=result.filter(play=>play.analysis.count===1);
-    if(singles.length) return [singles[singles.length-1]];
-  }
-
-  return result;
-}
-
-function checkPlay(playerIndex,cards){
-  const analysis=analyse(cards);
-
-  if(!analysis.valid) return {ok:false,reason:"這不是合法牌型。",analysis};
-
-  if(game.round===1&&game.firstTurn&&!includesDiamondThree(cards)){
-    return {ok:false,reason:"第一局首次出牌必須包括方塊 3。",analysis};
-  }
-
-  if(!isFreeLead(playerIndex)){
-    if(analysis.count!==game.lastPlay.count){
-      return {ok:false,reason:`必須出 ${game.lastPlay.count} 張牌。`,analysis};
-    }
-    if(!beats(analysis,game.lastPlay)){
-      return {ok:false,reason:"所出的牌不大於上一手。",analysis};
-    }
-  }
-
-  if(handCount(nextSeat(playerIndex))===1&&analysis.count===1){
-    const legal=getLegalPlays(playerIndex,true).filter(play=>play.analysis.count===1);
-    if(legal.length){
-      legal.sort((a,b)=>compareKeys(a.analysis.key,b.analysis.key));
-      const highest=legal[legal.length-1];
-      if(compareKeys(analysis.key,highest.analysis.key)<0){
-        return {ok:false,reason:"下家只剩一張牌，你必須頂大。",analysis};
-      }
-    }
-  }
-
-  return {ok:true,analysis};
-}
-
-/* =========================
-   ROUND
-========================= */
-
-function startRound(redeal=false){
-  if(!net.isHost) return;
-
-  clearTimers();
-  game.roundOver=false;
-  game.firstTurn=true;
-  game.lastPlay=null;
-  game.lastPlayer=null;
-  game.passCount=0;
-  game.selected.clear();
-
-  if(game.round===1||game.dealer===null){
-    game.dealer=Math.floor(Math.random()*4);
-    game.direction=1;
-    game.dealDirection=-1;
-  }else if(!redeal){
-    game.dealer=game.winner;
-    game.direction*=-1;
-    game.dealDirection*=-1;
-  }
-
-  game.players=net.seats.map((seat,index)=>({
-    name:seat.name,
-    bot:seat.bot,
-    hand:[],
-    penalty:[],
-    handCount:0,
-    index
-  }));
-
-  const deck=shuffle(createDeck());
-  let recipient=game.dealer;
-
-  for(const card of deck){
-    game.players[recipient].hand.push(card);
-    recipient=nextSeat(recipient,game.dealDirection);
-  }
-
-  for(const player of game.players){
-    sortHand(player.hand);
-    player.handCount=player.hand.length;
-  }
-
-  game.turn=game.round===1?findDiamondThree():game.winner;
-  nextButton.classList.add("hidden");
-
-  setMessage(
-    game.round===1
-      ?`${game.players[game.turn].name}持有方塊 3，必須首先出牌。`
-      :`${game.players[game.turn].name}是上局勝出者，首先出牌。`,
-    "notice"
-  );
-
-  renderAll();
-  beginTurn();
-}
-
-/* =========================
-   PLAY / PASS
-========================= */
-
-function commitPlay(playerIndex,cards,analysis){
-  if(!net.isHost) return;
-  clearTimers();
-
-  const player=game.players[playerIndex];
-  const ids=new Set(cards.map(card=>card.id));
-
-  player.hand=player.hand.filter(card=>!ids.has(card.id));
-  player.handCount=player.hand.length;
-  game.selected.clear();
-
-  game.lastPlay={...analysis,cards:[...cards]};
-  game.lastPlayer=playerIndex;
-  game.passCount=0;
-  game.firstTurn=false;
-
-  let text=`${player.name}打出${TYPE_NAMES[analysis.type]}：`+
-    cards.map(card=>card.symbol+card.rank).join(" ");
-
-  if(player.hand.length===1) text+=" — Last Card！";
-  setMessage(text,player.hand.length===1?"notice":"good");
-
-  if(player.hand.length===0&&player.penalty.length){
-    player.hand.push(...player.penalty);
-    player.penalty=[];
-    sortHand(player.hand);
-    player.handCount=player.hand.length;
-    setMessage(`${player.name}已打完其他手牌，非法牌現已收回。`,"bad");
-  }
-
-  if(player.hand.length===0){
-    finishRound(playerIndex);
-    return;
-  }
-
-  game.turn=nextSeat(playerIndex);
-  renderAll();
-  beginTurn();
-}
-
-function commitIllegal(playerIndex,cards,reason){
-  if(!net.isHost) return;
-  clearTimers();
-
-  const player=game.players[playerIndex];
-  const ids=new Set(cards.map(card=>card.id));
-
-  player.hand=player.hand.filter(card=>!ids.has(card.id));
-  player.penalty.push(...cards);
-  player.handCount=player.hand.length;
-  game.selected.clear();
-
-  setMessage(reason+" 牌已扣起，其他手牌打完後才可收回。","bad");
-
-  if(player.hand.length===0){
-    player.hand.push(...player.penalty);
-    player.penalty=[];
-    sortHand(player.hand);
-    player.handCount=player.hand.length;
-  }
-
-  game.turn=nextSeat(playerIndex);
-  renderAll();
-  beginTurn();
-}
-
-function commitPass(playerIndex){
-  if(!net.isHost) return;
-  clearTimers();
-
-  if(isFreeLead(playerIndex)){
-    const legal=getLegalPlays(playerIndex);
-    if(legal.length){
-      commitPlay(playerIndex,legal[0].cards,legal[0].analysis);
-      return;
-    }
-  }
-
-  game.passCount++;
-  setMessage(`${game.players[playerIndex].name}選擇 PASS。`,"notice");
-
-  if(game.passCount>=3){
-    const leader=game.lastPlayer;
-    game.lastPlay=null;
-    game.passCount=0;
-    game.turn=leader;
-    setMessage(`其餘三家全部 PASS，${game.players[leader].name}可以自由出牌。`,"notice");
-  }else{
-    game.turn=nextSeat(playerIndex);
-  }
-
-  renderAll();
-  beginTurn();
-}
-
-function finishRound(playerIndex){
-  clearTimers();
-  game.roundOver=true;
-  game.winner=playerIndex;
-  game.wins[playerIndex]++;
-
-  setMessage(`🏆 ${game.players[playerIndex].name}勝出第 ${game.round} 局！`,"good");
-  renderAll();
-  syncState();
-}
-
-/* =========================
-   HUMAN CONTROLS
-========================= */
-
-function humanPlay(){
-  const seat=net.localSeat;
-  if(game.roundOver||game.turn!==seat||game.players[seat]?.bot) return;
-
-  const cards=game.players[seat].hand.filter(card=>game.selected.has(card.id));
-  if(!cards.length){
-    setMessage("請先選擇啤牌。","bad");
-    return;
-  }
-
-  if(!net.isHost){
-    net.hostConnection.send({
-      type:"action",
-      action:"play",
-      cardIds:cards.map(card=>card.id)
-    });
-    game.selected.clear();
-    renderHand();
-    return;
-  }
-
-  const check=checkPlay(seat,cards);
-  check.ok
-    ?commitPlay(seat,cards,check.analysis)
-    :commitIllegal(seat,cards,check.reason);
-}
-
-function humanPass(){
-  const seat=net.localSeat;
-  if(game.roundOver||game.turn!==seat||game.players[seat]?.bot) return;
-
-  if(isFreeLead(seat)){
-    setMessage("自由出牌時不能 PASS。","bad");
-    return;
-  }
-
-  if(net.isHost) commitPass(seat);
-  else net.hostConnection.send({type:"action",action:"pass"});
-}
-
-function showHint(){
-  const seat=net.localSeat;
-  if(game.roundOver||game.turn!==seat||game.players[seat]?.bot) return;
-
-  const legal=getLegalPlays(seat);
-  game.selected.clear();
-
-  if(!legal.length){
-    setMessage("沒有可以出的牌，請 PASS。","notice");
-    renderHand();
-    return;
-  }
-
-  legal[0].cards.forEach(card=>game.selected.add(card.id));
-  setMessage(`提示：可出${TYPE_NAMES[legal[0].analysis.type]}。`,"good");
-  renderHand();
-}
-
-function handleRemoteAction(connection,data){
-  const seat=connection.seat;
-
-  if(
-    seat===undefined||game.roundOver||
-    game.turn!==seat||game.players[seat]?.bot
-  ) return;
-
-  if(data.action==="pass"){
-    if(!isFreeLead(seat)) commitPass(seat);
-    return;
-  }
-
-  if(data.action==="play"){
-    const ids=new Set(Array.isArray(data.cardIds)?data.cardIds:[]);
-    const cards=game.players[seat].hand.filter(card=>ids.has(card.id));
-
-    if(!cards.length||cards.length!==ids.size) return;
-
-    const check=checkPlay(seat,cards);
-    check.ok
-      ?commitPlay(seat,cards,check.analysis)
-      :commitIllegal(seat,cards,check.reason);
-  }
-}
-
-/* =========================
-   BOT
-========================= */
-
-function chooseBotPlay(playerIndex){
-  const legal=getLegalPlays(playerIndex);
-  if(!legal.length) return null;
-
-  const player=game.players[playerIndex];
-
-  const winning=legal.find(play=>play.cards.length===player.hand.length);
-  if(winning) return winning;
-
-  if(handCount(nextSeat(playerIndex))===1){
-    const singles=legal.filter(play=>play.cards.length===1);
-    if(singles.length) return singles[singles.length-1];
-  }
-
-  if(isFreeLead(playerIndex)){
-    for(const size of [5,3,2,1]){
-      const choice=legal.find(play=>play.cards.length===size);
-      if(choice) return choice;
-    }
-  }
-
-  return legal[0];
-}
-
-function runBotTurn(){
-  if(!net.isHost||game.roundOver||!game.players[game.turn]?.bot) return;
-
-  const seat=game.turn;
-  const choice=chooseBotPlay(seat);
-
-  game.aiTimer=setTimeout(()=>{
-    if(game.roundOver||game.turn!==seat||!game.players[seat]?.bot) return;
-    choice
-      ?commitPlay(seat,choice.cards,choice.analysis)
-      :commitPass(seat);
-  },700+Math.random()*900);
-}
-
-/* =========================
-   TIMER
-========================= */
-
-function beginTurn(){
-  if(game.roundOver) return;
-
-  renderAll();
-  if(!net.isHost) return;
-
-  clearTimers();
-  game.timeLeft=30;
-  updateTimer();
-  syncState();
-
-  game.timerId=setInterval(()=>{
-    game.timeLeft--;
-    updateTimer();
-    syncState();
-
-    if(game.timeLeft<=0){
-      clearTimers();
-      handleTimeout();
-    }
-  },1000);
-
-  if(game.players[game.turn].bot) runBotTurn();
-}
-
-function handleTimeout(){
-  const seat=game.turn;
-
-  if(isFreeLead(seat)){
-    const legal=getLegalPlays(seat);
-    if(legal.length){
-      setMessage(`${game.players[seat].name}逾時，自動出牌。`,"bad");
-      commitPlay(seat,legal[0].cards,legal[0].analysis);
-    }
-  }else{
-    setMessage(`${game.players[seat].name}逾時，自動 PASS。`,"bad");
-    commitPass(seat);
-  }
-}
-
-function updateTimer(){
-  timerEl.textContent=game.timeLeft;
-  timerEl.classList.toggle("warn",game.timeLeft<=10);
-  timerEl.classList.toggle("danger",game.timeLeft<=5);
-}
-
-/* =========================
-   NETWORK STATE
-========================= */
-
-function stateForSeat(seat){
-  return {
-    round:game.round,
-    dealer:game.dealer,
-    winner:game.winner,
-    turn:game.turn,
-    direction:game.direction,
-    dealDirection:game.dealDirection,
-    firstTurn:game.firstTurn,
-    roundOver:game.roundOver,
-    lastPlay:game.lastPlay,
-    lastPlayer:game.lastPlayer,
-    passCount:game.passCount,
-    timeLeft:game.timeLeft,
-    wins:[...game.wins],
-    statusText:game.statusText,
-    statusType:game.statusType,
-    players:game.players.map((player,index)=>({
-      name:player.name,
-      bot:player.bot,
-      index,
-      hand:index===seat?player.hand:[],
-      penalty:index===seat?player.penalty:[],
-      handCount:player.hand.length,
-      penaltyCount:player.penalty.length
-    }))
-  };
-}
-
-function syncState(){
-  if(!net.isHost||!net.started) return;
-
-  for(const [seat,connection] of net.connections){
-    if(connection.open){
-      connection.send({type:"state",state:stateForSeat(seat)});
-    }
-  }
-}
-
-function applyState(state){
-  if(net.isHost) return;
-
-  Object.assign(game,{
-    round:state.round,
-    dealer:state.dealer,
-    winner:state.winner,
-    turn:state.turn,
-    direction:state.direction,
-    dealDirection:state.dealDirection,
-    firstTurn:state.firstTurn,
-    roundOver:state.roundOver,
-    lastPlay:state.lastPlay,
-    lastPlayer:state.lastPlayer,
-    passCount:state.passCount,
-    timeLeft:state.timeLeft,
-    wins:state.wins,
-    statusText:state.statusText,
-    statusType:state.statusType,
-    players:state.players
-  });
-
-  const validIds=new Set(game.players[net.localSeat].hand.map(card=>card.id));
-  game.selected=new Set([...game.selected].filter(id=>validIds.has(id)));
-
-  messageEl.textContent=game.statusText;
-  messageEl.className=game.statusType;
-  updateTimer();
-  renderAll();
-}
-
-/* =========================
-   RENDERING
-========================= */
-
-function cardHTML(card,extra=""){
-  return `
-    <div class="card ${card.red?"red":""} ${extra}">
-      <div class="corner">${card.rank}<br>${card.symbol}</div>
-      <div class="big">${card.symbol}</div>
-      <div class="corner bottom">${card.rank}<br>${card.symbol}</div>
-    </div>
-  `;
-}
-
-function renderHand(){
-  handEl.innerHTML="";
-  const player=game.players[net.localSeat];
-  if(!player) return;
-
-  player.hand.forEach((card,index)=>{
-    const wrapper=document.createElement("div");
-    wrapper.innerHTML=cardHTML(
-      card,
-      "hand-card "+(game.selected.has(card.id)?"selected":"")
+    const courtCardCount = hand.filter(card =>
+        card.rank === "J" ||
+        card.rank === "Q" ||
+        card.rank === "K"
+    ).length;
+
+    const hasAceOrTwo = hand.some(card =>
+        card.rank === "A" || card.rank === "2"
     );
 
-    const element=wrapper.firstElementChild;
-    element.style.zIndex=index;
+    return courtCardCount === 2 && !hasAceOrTwo;
+}
 
-    element.onclick=()=>{
-      if(game.roundOver||game.turn!==net.localSeat||player.bot) return;
+function canRequestDee(playerIndex) {
+    if (
+        !net.started ||
+        game.roundOver ||
+        !game.firstTurn ||
+        game.lastPlay !== null
+    ) {
+        return {
+            valid: false,
+            reason: "Dee 只可以在本局第一次出牌前申請。"
+        };
+    }
 
-      if(game.selected.has(card.id)) game.selected.delete(card.id);
-      else game.selected.add(card.id);
+    const player = game.players[playerIndex];
 
-      renderHand();
+    if (!player || !Array.isArray(player.hand)) {
+        return {
+            valid: false,
+            reason: "無法驗證玩家的手牌。"
+        };
+    }
+
+    if (!hasDoubleCourtNoAceTwo(player.hand)) {
+        return {
+            valid: false,
+            reason:
+                "不符合「雙公無煙 Dee」：" +
+                "必須剛好有兩張 J／Q／K，而且沒有 A 或 2。"
+        };
+    }
+
+    return {
+        valid: true,
+        reason: ""
     };
-
-    handEl.appendChild(element);
-  });
 }
 
-function renderPlayers(){
-  if(!game.players.length) return;
+function approveDee(playerIndex) {
+    const verification = canRequestDee(playerIndex);
 
-  for(let visual=0;visual<4;visual++){
-    const actual=(net.localSeat+visual)%4;
-    const player=game.players[actual];
-    const zone=$("player"+visual);
-    const count=handCount(actual);
+    if (!verification.valid) {
+        return verification;
+    }
 
-    zone.classList.toggle("active",game.turn===actual&&!game.roundOver);
-    zone.classList.toggle("winner",game.roundOver&&game.winner===actual);
+    const playerName =
+        game.players[playerIndex]?.name || `玩家 ${playerIndex + 1}`;
 
-    const backs=visual===0?"":`
-      <div class="minihand">
-        ${Array.from({length:Math.min(count,10)},()=>'<div class="minicard"></div>').join("")}
-      </div>
-    `;
+    setMessage(
+        `${playerName}的手牌已確認符合「雙公無煙 Dee」，正在重新派牌。`,
+        "notice"
+    );
 
-    zone.innerHTML=`
-      ${backs}
-      <div class="panel">
-        <div class="avatar">${player.bot?"🤖":ICONS[actual]}</div>
-        <div class="pname">
-          ${safeText(player.name)}
-          ${game.dealer===actual?" 🎴":""}
-        </div>
-        <div class="pmeta">
-          ${count} 張牌
-          ${count===1?"｜⚠ Last Card":""}
-          ${(player.penaltyCount??player.penalty.length)>0
-            ?"｜扣牌 "+(player.penaltyCount??player.penalty.length):""}
-          ｜勝 ${game.wins[actual]}
-        </div>
-      </div>
-    `;
-  }
-}
-
-function renderTable(){
-  tableCardsEl.innerHTML="";
-
-  if(!game.lastPlay){
-    trickLabel.textContent=game.roundOver?"本局完結":"自由出牌";
-    return;
-  }
-
-  trickLabel.textContent=
-    `${game.players[game.lastPlayer].name}：${TYPE_NAMES[game.lastPlay.type]}`;
-
-  for(const card of game.lastPlay.cards){
-    const wrapper=document.createElement("div");
-    wrapper.innerHTML=cardHTML(card,"table-card");
-    tableCardsEl.appendChild(wrapper.firstElementChild);
-  }
-}
-
-function renderControls(){
-  const seat=net.localSeat;
-  const myTurn=
-    game.players[seat]&&!game.players[seat].bot&&
-    game.turn===seat&&!game.roundOver;
-
-  playButton.disabled=!myTurn;
-  hintButton.disabled=!myTurn;
-  clearButton.disabled=!myTurn;
-  passButton.disabled=!myTurn||isFreeLead(seat);
-
-  deeButton.classList.toggle("hidden",!net.isHost||game.roundOver);
-  nextButton.classList.toggle("hidden",!net.isHost||!game.roundOver);
-}
-
-function renderPenalty(){
-  const player=game.players[net.localSeat];
-  if(!player||!player.penalty.length){
-    penaltyEl.classList.add("hidden");
-    return;
-  }
-
-  penaltyEl.classList.remove("hidden");
-  penaltyEl.textContent=
-    "被扣起的非法牌："+player.penalty.map(card=>card.symbol+card.rank).join(" ");
-}
-
-function renderInfo(){
-  const playDirection=game.direction===1?"順時針":"逆時針";
-  const dealDirection=game.dealDirection===1?"順時針":"逆時針";
-
-  infoEl.innerHTML=
-    `房間 ${net.room}｜${net.isHost?"房主":"網上玩家"}<br>`+
-    `第 ${game.round} 局｜派牌 ${dealDirection}｜出牌 ${playDirection}`;
-}
-
-function renderAll(){
-  renderPlayers();
-  renderHand();
-  renderTable();
-  renderControls();
-  renderPenalty();
-  renderInfo();
-  updateTimer();
-}
-
-function setMessage(text,type="notice"){
-  game.statusText=text;
-  game.statusType=type;
-  messageEl.textContent=text;
-  messageEl.className=type;
-}
-
-/* =========================
-   BUTTON EVENTS
-========================= */
-
-createButton.onclick=createRoom;
-joinButton.onclick=joinRoom;
-startButton.onclick=startOnlineGame;
-
-$("copyButton").onclick=async()=>{
-  try{
-    await navigator.clipboard.writeText(net.room);
-    $("copyButton").textContent="已複製";
-    setTimeout(()=>$("copyButton").textContent="複製",1200);
-  }catch{
-    prompt("複製房間代碼：",net.room);
-  }
-};
-
-codeInput.oninput=()=>{
-  codeInput.value=codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
-};
-
-codeInput.onkeydown=event=>{
-  if(event.key==="Enter") joinRoom();
-};
-
-playButton.onclick=humanPlay;
-passButton.onclick=humanPass;
-hintButton.onclick=showHint;
-
-clearButton.onclick=()=>{
-  game.selected.clear();
-  renderHand();
-};
-
-nextButton.onclick=()=>{
-  if(!net.isHost||!game.roundOver) return;
-  game.round++;
-  startRound();
-};
-
-deeButton.onclick=()=>{
-  if(!net.isHost||game.roundOver) return;
-  if(confirm("確定因「雙公無煙 Dee」重新派牌？")){
-    setMessage("工作人員宣布 Dee，本局重新派牌。","notice");
+    /*
+       startRound(true) 保留現時局數，
+       並以重發方式開始。
+    */
     startRound(true);
-  }
+
+    return {
+        valid: true,
+        reason: ""
+    };
+}
+
+function requestDee() {
+    const seat = net.localSeat;
+
+    if (!net.started || game.roundOver) {
+        setMessage("現在不能申請 Dee。", "bad");
+        return;
+    }
+
+    /*
+       房主直接在權威遊戲狀態中驗證自己的手牌。
+    */
+    if (net.isHost) {
+        const result = approveDee(seat);
+
+        if (!result.valid) {
+            setMessage(result.reason, "bad");
+        }
+
+        return;
+    }
+
+    /*
+       其他玩家只負責提出申請。
+       房主會使用房主所保存的真實手牌重新驗證，
+       不會信任玩家瀏覽器提供的牌。
+    */
+    if (!net.hostConnection || !net.hostConnection.open) {
+        setMessage("無法連接房主，不能申請 Dee。", "bad");
+        return;
+    }
+
+    net.hostConnection.send({
+        type: "action",
+        action: "dee"
+    });
+
+    setMessage("已向房主申請驗證「雙公無煙 Dee」。", "notice");
+}
+
+
+/* ---------------------------------------------------------
+   嚴格出牌驗證
+--------------------------------------------------------- */
+
+/*
+   本地玩家出牌。
+
+   舊版本會把非法牌扣起，看起來像玩家仍然成功
+   出了錯誤牌數。新版本會直接拒絕，不會移走手牌。
+*/
+humanPlay = function strictHumanPlay() {
+    const seat = net.localSeat;
+    const player = game.players[seat];
+
+    if (
+        game.roundOver ||
+        game.turn !== seat ||
+        !player ||
+        player.bot
+    ) {
+        return;
+    }
+
+    const cards = player.hand.filter(card =>
+        game.selected.has(card.id)
+    );
+
+    if (cards.length === 0) {
+        setMessage("請先選擇要出的牌。", "bad");
+        return;
+    }
+
+    /*
+       如果不是自由出牌，必須跟上一手相同牌數。
+    */
+    if (
+        !isFreeLead(seat) &&
+        game.lastPlay &&
+        cards.length !== game.lastPlay.count
+    ) {
+        setMessage(
+            `上一手出了 ${game.lastPlay.count} 張牌，` +
+            `你亦必須出 ${game.lastPlay.count} 張牌，或選擇 PASS。`,
+            "bad"
+        );
+        return;
+    }
+
+    /*
+       客戶端先作本地驗證，改善反應速度。
+       房主仍會再次驗證，防止修改瀏覽器程式作弊。
+    */
+    const localCheck = checkPlay(seat, cards);
+
+    if (!localCheck.ok) {
+        setMessage(localCheck.reason, "bad");
+        return;
+    }
+
+    if (!net.isHost) {
+        if (!net.hostConnection || !net.hostConnection.open) {
+            setMessage("與房主的連線已中斷。", "bad");
+            return;
+        }
+
+        net.hostConnection.send({
+            type: "action",
+            action: "play",
+            cardIds: cards.map(card => card.id)
+        });
+
+        /*
+           等待房主回傳新狀態。
+           不在客戶端自行移走啤牌。
+        */
+        setMessage("等待房主確認出牌……", "notice");
+        return;
+    }
+
+    commitPlay(seat, cards, localCheck.analysis);
 };
 
-$("rulesButton").onclick=()=>$("rulesModal").classList.add("open");
-$("closeRules").onclick=()=>$("rulesModal").classList.remove("open");
 
-$("rulesModal").onclick=event=>{
-  if(event.target===$("rulesModal")) $("rulesModal").classList.remove("open");
+/* ---------------------------------------------------------
+   房主驗證其他玩家的操作
+--------------------------------------------------------- */
+
+handleRemoteAction = function strictRemoteAction(connection, data) {
+    const seat = connection.seat;
+
+    if (
+        seat === undefined ||
+        !game.players[seat] ||
+        game.players[seat].bot
+    ) {
+        return;
+    }
+
+    /*
+       Dee 不需要輪到該玩家才可申請，
+       但一定要在首次出牌之前。
+    */
+    if (data.action === "dee") {
+        const result = approveDee(seat);
+
+        if (!result.valid && connection.open) {
+            connection.send({
+                type: "actionError",
+                message: result.reason
+            });
+        }
+
+        return;
+    }
+
+    if (
+        game.roundOver ||
+        game.turn !== seat
+    ) {
+        if (connection.open) {
+            connection.send({
+                type: "actionError",
+                message: "現在不是你的回合。"
+            });
+        }
+
+        return;
+    }
+
+    if (data.action === "pass") {
+        if (isFreeLead(seat)) {
+            if (connection.open) {
+                connection.send({
+                    type: "actionError",
+                    message: "自由出牌時不能 PASS。"
+                });
+            }
+
+            return;
+        }
+
+        commitPass(seat);
+        return;
+    }
+
+    if (data.action !== "play") {
+        return;
+    }
+
+    const requestedIds = Array.isArray(data.cardIds)
+        ? data.cardIds
+        : [];
+
+    /*
+       防止重複 ID。
+    */
+    const uniqueIds = new Set(requestedIds);
+
+    if (
+        requestedIds.length === 0 ||
+        uniqueIds.size !== requestedIds.length
+    ) {
+        if (connection.open) {
+            connection.send({
+                type: "actionError",
+                message: "出牌資料無效。"
+            });
+        }
+
+        return;
+    }
+
+    const cards = game.players[seat].hand.filter(card =>
+        uniqueIds.has(card.id)
+    );
+
+    /*
+       確認所有 ID 都確實屬於該玩家。
+    */
+    if (cards.length !== uniqueIds.size) {
+        if (connection.open) {
+            connection.send({
+                type: "actionError",
+                message: "所選啤牌不屬於你的手牌。"
+            });
+        }
+
+        return;
+    }
+
+    /*
+       強制跟相同牌數。
+       例如上一手是兩張牌，便只能出兩張牌。
+    */
+    if (
+        !isFreeLead(seat) &&
+        game.lastPlay &&
+        cards.length !== game.lastPlay.count
+    ) {
+        if (connection.open) {
+            connection.send({
+                type: "actionError",
+                message:
+                    `上一手出了 ${game.lastPlay.count} 張牌，` +
+                    `你必須出 ${game.lastPlay.count} 張牌，或選擇 PASS。`
+            });
+        }
+
+        return;
+    }
+
+    const verification = checkPlay(seat, cards);
+
+    if (!verification.ok) {
+        if (connection.open) {
+            connection.send({
+                type: "actionError",
+                message: verification.reason
+            });
+        }
+
+        return;
+    }
+
+    /*
+       只有通過所有檢查後才真正出牌。
+    */
+    commitPlay(seat, cards, verification.analysis);
 };
 
-document.addEventListener("keydown",event=>{
-  if(event.key==="Escape"){
-    $("rulesModal").classList.remove("open");
-    game.selected.clear();
-    renderHand();
-  }
 
-  if(event.key==="Enter"&&menu.classList.contains("hidden")){
-    humanPlay();
-  }
+/* ---------------------------------------------------------
+   客戶端接收出牌錯誤
+--------------------------------------------------------- */
 
-  if(event.code==="Space"&&menu.classList.contains("hidden")){
-    event.preventDefault();
-    humanPass();
-  }
-});
+const originalHandleClientMessageForRulePatch =
+    handleClientMessage;
+
+handleClientMessage = function patchedClientMessage(data) {
+    if (!data || typeof data !== "object") {
+        return;
+    }
+
+    if (data.type === "actionError") {
+        setMessage(
+            data.message || "房主拒絕了這個操作。",
+            "bad"
+        );
+
+        return;
+    }
+
+    originalHandleClientMessageForRulePatch(data);
+};
+
+
+/* ---------------------------------------------------------
+   Dee 按鈕顯示方式
+--------------------------------------------------------- */
+
+const originalRenderControlsForRulePatch =
+    renderControls;
+
+renderControls = function patchedRenderControls() {
+    originalRenderControlsForRulePatch();
+
+    const deePeriodOpen =
+        net.started &&
+        !game.roundOver &&
+        game.firstTurn &&
+        game.lastPlay === null;
+
+    /*
+       所有真人玩家都可以在首次出牌前申請 Dee。
+       最終結果由房主驗證。
+    */
+    deeButton.classList.toggle(
+        "hidden",
+        !deePeriodOpen ||
+        game.players[net.localSeat]?.bot
+    );
+
+    deeButton.textContent = "驗證 Dee";
+};
+
+
+/* ---------------------------------------------------------
+   取代舊 Dee 按鈕操作
+--------------------------------------------------------- */
+
+deeButton.onclick = requestDee;
+
+
+/* ---------------------------------------------------------
+   顯示需要跟多少張牌
+--------------------------------------------------------- */
+
+const originalRenderTableForRulePatch =
+    renderTable;
+
+renderTable = function patchedRenderTable() {
+    originalRenderTableForRulePatch();
+
+    if (
+        game.lastPlay &&
+        !isFreeLead(net.localSeat) &&
+        !game.roundOver
+    ) {
+        trickLabel.textContent +=
+            `｜必須跟 ${game.lastPlay.count} 張`;
+    }
+};
+
+console.log(
+    "規則修正已載入：Dee 驗證、嚴格牌數驗證、加密安全洗牌。"
+);
 </script>
+  
 </body>
 </html>
