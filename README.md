@@ -75,7 +75,8 @@ In this version, a player can claim **Dee** if their hand has exactly two J/Q/K 
 ```
 ├── index.html   # Menu, lobby, game table, rules modal
 ├── script.js    # Game logic, networking, bots, validation
-└── style.css    # Styling
+├── style.css    # Styling
+└── LICENSE      # MIT License
 ```
 
 ## Run Locally
@@ -99,4 +100,4 @@ Built with the assistance of GPT-5.6 Sol and GPT-6.1 Sol.
 
 ## License
 
-Add a license of your choice (for example, MIT).
+This project is licensed under the [MIT License](LICENSE). (本項目以 MIT 授權條款發佈。)
